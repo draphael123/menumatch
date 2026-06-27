@@ -34,7 +34,7 @@ export default async function handler(req, res) {
       // For US zip codes, geocode first to get precise coordinates, then use nearbySearch
       const isZip = /^\d{5}$/.test(location.trim());
       if (isZip) {
-        const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&components=country:US&key=${key}`);
+        const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?components=postal_code:${encodeURIComponent(location.trim())}%7Ccountry:US&key=${key}`);
         const geoData = await geoRes.json();
         if (geoData.status === 'OK' && geoData.results[0]?.geometry?.location) {
           const loc = geoData.results[0].geometry.location;
