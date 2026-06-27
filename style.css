@@ -320,6 +320,8 @@ html, body {
 
 .r-stars { color: var(--amber); font-size: 11px; }
 
+.r-address { font-size: 11px; color: #b0a090; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .match-pill {
   font-size: 11px;
   font-weight: 600;

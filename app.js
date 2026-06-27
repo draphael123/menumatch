@@ -1,38 +1,3 @@
-const MOCK_RESTAURANTS = [
-  {
-    name: "Coral Reef Grill", icon: "🐟", cuisine: "Seafood", rating: 4.7, dist: "0.3 mi",
-    dishes: ["Grilled Salmon with Lemon Butter", "Salmon Rice Bowl", "Tuna Steak with Steamed Broccoli", "Shrimp Pasta", "Lobster Bisque", "Caesar Salad", "Pan-Seared Cod with Rice Pilaf", "Steamed Broccoli Side"]
-  },
-  {
-    name: "Verde Kitchen", icon: "🥗", cuisine: "Mediterranean", rating: 4.5, dist: "0.6 mi",
-    dishes: ["Chicken Souvlaki Plate", "Grilled Chicken over Rice", "Falafel Bowl", "Lemon Herb Salmon", "Spanakopita", "Greek Salad", "Steamed Vegetables", "Rice Pilaf", "Broccoli Hummus Wrap"]
-  },
-  {
-    name: "Dragon Bowl", icon: "🍜", cuisine: "Asian Fusion", rating: 4.3, dist: "0.8 mi",
-    dishes: ["Chicken Stir Fry with Broccoli", "Salmon Teriyaki Bowl", "Steamed Rice", "Beef Bulgogi", "Shrimp Fried Rice", "Tofu Broccoli Bowl", "Duck Confit", "Noodle Soup", "Edamame"]
-  },
-  {
-    name: "The Burger Barn", icon: "🍔", cuisine: "American", rating: 4.1, dist: "1.1 mi",
-    dishes: ["Classic Cheeseburger", "Bacon Burger", "Chicken Sandwich", "Grilled Chicken Wrap", "Loaded Fries", "Onion Rings", "Buffalo Wings", "Mac & Cheese", "Milkshakes"]
-  },
-  {
-    name: "Mamma Rosa", icon: "🍝", cuisine: "Italian", rating: 4.8, dist: "1.4 mi",
-    dishes: ["Spaghetti Bolognese", "Chicken Parmigiana", "Grilled Salmon Fettuccine", "Risotto", "Broccoli Rabe Pasta", "Caesar Salad", "Beef Lasagna", "Tiramisu", "Garlic Bread"]
-  },
-  {
-    name: "Taco Loco", icon: "🌮", cuisine: "Mexican", rating: 4.2, dist: "1.6 mi",
-    dishes: ["Chicken Tacos", "Beef Burrito", "Rice and Beans", "Grilled Chicken Quesadilla", "Fish Tacos with Rice", "Shrimp Tacos", "Guacamole", "Elote", "Carnitas Bowl"]
-  },
-  {
-    name: "Sakura Sushi", icon: "🍱", cuisine: "Japanese", rating: 4.9, dist: "2.0 mi",
-    dishes: ["Salmon Nigiri", "Tuna Sashimi", "Chicken Teriyaki Bento", "Salmon Roll", "Avocado Rice Bowl", "Miso Soup", "Edamame", "Chicken Gyoza", "Tempura Shrimp", "Steamed Rice"]
-  },
-  {
-    name: "Farm & Fire", icon: "🥩", cuisine: "American BBQ", rating: 4.4, dist: "2.3 mi",
-    dishes: ["Smoked Brisket", "BBQ Chicken Plate", "Pulled Pork Sandwich", "Grilled Salmon", "Cornbread", "Collard Greens", "Baked Beans", "Mac & Cheese", "Sweet Potato Fries"]
-  }
-];
-
 let foods = JSON.parse(localStorage.getItem('mm_foods') || '["chicken","salmon","rice","broccoli"]');
 
 function saveFoods() {
@@ -71,22 +36,39 @@ document.getElementById('foodInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') addFood();
 });
 
-function matchDishes(dishes) {
-  if (!foods.length) return { matched: [], matchedFoods: [], pct: 0 };
-  const matched = [];
-  const matchedFoods = new Set();
-  dishes.forEach(dish => {
-    const dl = dish.toLowerCase();
-    const hits = foods.filter(f => dl.includes(f));
-    if (hits.length) {
-      matched.push({ dish, foods: hits });
-      hits.forEach(h => matchedFoods.add(h));
-    }
-  });
+function cuisineIcon(type) {
+  const t = (type || '').toLowerCase();
+  if (t.includes('sushi') || t.includes('japanese')) return '🍱';
+  if (t.includes('pizza') || t.includes('italian')) return '🍕';
+  if (t.includes('burger') || t.includes('american')) return '🍔';
+  if (t.includes('taco') || t.includes('mexican')) return '🌮';
+  if (t.includes('chinese') || t.includes('asian') || t.includes('wok')) return '🥡';
+  if (t.includes('indian') || t.includes('curry')) return '🍛';
+  if (t.includes('seafood') || t.includes('fish')) return '🐟';
+  if (t.includes('bbq') || t.includes('grill')) return '🥩';
+  if (t.includes('cafe') || t.includes('coffee')) return '☕';
+  if (t.includes('thai')) return '🍜';
+  if (t.includes('mediterranean') || t.includes('greek')) return '🥗';
+  return '🍽️';
+}
+
+function distanceText(userCoords, restaurantLocation) {
+  if (!userCoords || !restaurantLocation) return '';
+  const R = 3958.8;
+  const dLat = (restaurantLocation.latitude - userCoords.lat) * Math.PI / 180;
+  const dLon = (restaurantLocation.longitude - userCoords.lng) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(userCoords.lat * Math.PI/180) * Math.cos(restaurantLocation.latitude * Math.PI/180) * Math.sin(dLon/2)**2;
+  const miles = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return miles < 0.1 ? 'nearby' : `${miles.toFixed(1)} mi`;
+}
+
+function matchCuisine(cuisine) {
+  if (!foods.length) return { matchedFoods: [], pct: 0 };
+  const cl = cuisine.toLowerCase();
+  const matchedFoods = foods.filter(f => cl.includes(f));
   return {
-    matched,
-    matchedFoods: [...matchedFoods],
-    pct: foods.length ? Math.round(matchedFoods.size / foods.length * 100) : 0
+    matchedFoods,
+    pct: Math.round(matchedFoods.length / foods.length * 100)
   };
 }
 
@@ -97,69 +79,46 @@ function pillClass(pct) {
   return 'match-none';
 }
 
-function toggleDishes(idx) {
-  const el = document.getElementById('dishes' + idx);
-  const icon = document.getElementById('expIcon' + idx);
-  const opening = el.style.display === 'none';
-  el.style.display = opening ? 'flex' : 'none';
-  icon.style.transform = opening ? 'rotate(180deg)' : '';
-}
-
-function renderResults(restaurants) {
+function renderResults(restaurants, userCoords) {
   const area = document.getElementById('resultsArea');
   if (!restaurants.length) {
-    area.innerHTML = '<div class="empty-state"><i class="ti ti-circle-x empty-icon" aria-hidden="true"></i><div class="empty-title">No restaurants found</div></div>';
+    area.innerHTML = '<div class="empty-state"><i class="ti ti-circle-x empty-icon" aria-hidden="true"></i><div class="empty-title">No restaurants found nearby</div><div class="empty-sub">Try a different location or zoom out</div></div>';
     return;
   }
 
   const noFoods = !foods.length;
   const scored = restaurants.map(r => {
-    const m = matchDishes(r.dishes);
-    return { ...r, ...m };
+    const { matchedFoods: mf, pct } = matchCuisine(r.cuisine);
+    return { ...r, matchedFoods: mf, pct };
   });
-  scored.sort((a, b) => b.pct - a.pct);
+  scored.sort((a, b) => b.pct - a.pct || (b.rating || 0) - (a.rating || 0));
 
-  const headerEl = `<div class="results-header">${scored.length} restaurants found${noFoods ? ' — add foods to see matches' : ''}</div>`;
+  const headerEl = `<div class="results-header">${scored.length} restaurants found near you${noFoods ? ' — add foods to see matches' : ''}</div>`;
 
   const cards = scored.map((r, idx) => {
-    const { matched, matchedFoods: mf, pct } = r;
+    const { matchedFoods: mf, pct } = r;
     const pillLabel = noFoods
       ? 'Add foods to match'
-      : (mf.length ? `${mf.length}/${foods.length} foods matched` : 'No matches');
+      : (mf.length ? `Serves ${mf.join(', ')}` : 'No direct matches');
     const pc = noFoods ? 'match-none' : pillClass(pct);
-
-    const unmatchedDishes = r.dishes.filter(d => !matched.find(m => m.dish === d));
+    const stars = r.rating ? `${'★'.repeat(Math.floor(r.rating))}${'☆'.repeat(5 - Math.floor(r.rating))}` : '';
+    const dist = distanceText(userCoords, r.location);
+    const icon = cuisineIcon(r.cuisine);
 
     return `<div class="r-card" id="card${idx}">
       <div class="r-card-header">
-        <div class="r-icon">${r.icon}</div>
+        <div class="r-icon">${icon}</div>
         <div class="r-meta">
           <div class="r-name">${r.name}</div>
           <div class="r-sub">
-            <span class="r-stars">${'★'.repeat(Math.floor(r.rating))}${'☆'.repeat(5 - Math.floor(r.rating))}</span>
-            <span>${r.rating}</span><span>·</span><span>${r.cuisine}</span><span>·</span><span>${r.dist}</span>
+            ${r.rating ? `<span class="r-stars">${stars}</span><span>${r.rating.toFixed(1)}</span><span>·</span>` : ''}
+            <span>${r.cuisine}</span>
+            ${dist ? `<span>·</span><span>${dist}</span>` : ''}
+            ${r.ratingCount ? `<span>·</span><span>${r.ratingCount.toLocaleString()} reviews</span>` : ''}
           </div>
+          <div class="r-address">${r.address}</div>
         </div>
         <span class="match-pill ${pc}">${pillLabel}</span>
-      </div>
-      ${mf.length ? `<div class="r-matched-foods">${mf.map(f => `<span class="matched-food"><i class="ti ti-check" aria-hidden="true" style="font-size:10px"></i>${f}</span>`).join('')}</div>` : ''}
-      <button class="r-expand-btn" onclick="toggleDishes(${idx})" id="expBtn${idx}">
-        <i class="ti ti-chevron-down" aria-hidden="true" id="expIcon${idx}"></i>
-        ${matched.length ? `View ${matched.length} matching dish${matched.length === 1 ? '' : 'es'}` : `View all ${r.dishes.length} dishes`}
-      </button>
-      <div class="r-dishes" id="dishes${idx}" style="display:none">
-        ${matched.map(m => `
-          <div class="dish-row dish-match">
-            <i class="ti ti-check" aria-hidden="true" style="font-size:12px;color:#3B6D11;flex-shrink:0"></i>
-            <span>${m.dish}</span>
-            ${m.foods.map(f => `<span class="dish-tag">${f}</span>`).join('')}
-          </div>`).join('')}
-        ${matched.length && unmatchedDishes.length ? '<hr class="dish-divider">' : ''}
-        ${unmatchedDishes.map(d => `
-          <div class="dish-row" style="opacity:0.5">
-            <i class="ti ti-minus" aria-hidden="true" style="font-size:11px;flex-shrink:0"></i>
-            ${d}
-          </div>`).join('')}
       </div>
     </div>`;
   }).join('');
@@ -167,22 +126,44 @@ function renderResults(restaurants) {
   area.innerHTML = headerEl + cards;
 }
 
+let currentCoords = null;
+
 function useMyLocation() {
   if (!navigator.geolocation) return;
   const input = document.getElementById('locationInput');
   input.value = 'Detecting location…';
   navigator.geolocation.getCurrentPosition(
-    () => { input.value = 'Current location'; runSearch(); },
-    () => { input.value = 'Miami, FL'; }
+    pos => {
+      currentCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      input.value = 'Current location';
+      runSearch();
+    },
+    () => { input.value = ''; input.placeholder = 'Enter a location…'; }
   );
 }
 
-function runSearch() {
+async function runSearch() {
   const loc = document.getElementById('locationInput').value.trim();
   if (!loc) return;
+
   const area = document.getElementById('resultsArea');
   area.innerHTML = `<div class="empty-state"><i class="ti ti-loader empty-icon spinning" aria-hidden="true"></i><div class="empty-title">Searching restaurants…</div></div>`;
-  setTimeout(() => renderResults(MOCK_RESTAURANTS), 800);
+
+  try {
+    const params = currentCoords && loc === 'Current location'
+      ? `lat=${currentCoords.lat}&lng=${currentCoords.lng}`
+      : `location=${encodeURIComponent(loc)}`;
+
+    const res = await fetch(`/api/search?${params}`);
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || 'Search failed');
+
+    if (data.coords) currentCoords = data.coords;
+    renderResults(data.restaurants, currentCoords);
+  } catch (err) {
+    area.innerHTML = `<div class="empty-state"><i class="ti ti-alert-circle empty-icon" aria-hidden="true"></i><div class="empty-title">Search failed</div><div class="empty-sub">${err.message}</div></div>`;
+  }
 }
 
 renderTags();
