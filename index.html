@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
   <div class="app">
@@ -32,7 +32,7 @@
         </button>
       </nav>
       <hr class="sidebar-divider">
-      <div class="sidebar-note">
+      <div class="sidebar-note" id="sidebarNote">
         <i class="ti ti-leaf" aria-hidden="true"></i>
         Profile: vegetarian, no garlic or onion, rennet-free cheese, low insoluble fiber.
       </div>
@@ -53,93 +53,7 @@
             </button>
           </div>
         </div>
-        <div class="card-area" id="dietCard">
-          <div class="diet-card">
-            <div class="diet-card-header">
-              <div class="diet-card-title">My dietary needs</div>
-              <div class="diet-card-sub">Please read before taking my order</div>
-            </div>
-
-            <div class="diet-section">
-              <div class="diet-section-label avoid">
-                <i class="ti ti-circle-x" aria-hidden="true"></i> I cannot eat
-              </div>
-              <div class="diet-items">
-                <span class="diet-item avoid">Garlic</span>
-                <span class="diet-item avoid">Onions</span>
-                <span class="diet-item avoid">Meat or fish</span>
-                <span class="diet-item avoid">Seeds of any kind</span>
-                <span class="diet-item avoid">Animal rennet in cheese</span>
-                <span class="diet-item avoid">Gravy</span>
-                <span class="diet-item avoid">Whole grains or bran</span>
-              </div>
-            </div>
-
-            <div class="diet-section">
-              <div class="diet-section-label ask">
-                <i class="ti ti-help-circle" aria-hidden="true"></i> Please ask the kitchen
-              </div>
-              <div class="ask-box">
-                "Can this dish be prepared <strong>without garlic or onion</strong>? I have a medical intolerance."
-              </div>
-            </div>
-
-            <div class="diet-section">
-              <div class="diet-section-label safe">
-                <i class="ti ti-circle-check" aria-hidden="true"></i> I can safely eat
-              </div>
-              <div class="safe-grid">
-                <div class="safe-category">
-                  <div class="safe-cat-label">Cheese</div>
-                  <ul>
-                    <li>Mozzarella (rennet-free)</li>
-                    <li>Ricotta</li>
-                    <li>Farmer's cheese</li>
-                    <li>Some cheddar or Swiss</li>
-                    <li>Parmesan — only if labelled vegetarian</li>
-                  </ul>
-                </div>
-                <div class="safe-category">
-                  <div class="safe-cat-label">Dishes</div>
-                  <ul>
-                    <li>White pizza (no garlic)</li>
-                    <li>Pasta with passata sauce</li>
-                    <li>Pierogi — potato &amp; cheese</li>
-                    <li>Plain dosa (South Indian)</li>
-                    <li>Masoor dal — without onion/garlic</li>
-                    <li>Mashed potatoes (with milk, no gravy)</li>
-                    <li>Potato casserole</li>
-                    <li>Baked plain tofu</li>
-                    <li>Eggs (as part of a dish)</li>
-                  </ul>
-                </div>
-                <div class="safe-category">
-                  <div class="safe-cat-label">Staples</div>
-                  <ul>
-                    <li>White rice</li>
-                    <li>White flour pasta</li>
-                    <li>Sourdough bread (no seeds)</li>
-                    <li>Passata (strained tomato)</li>
-                    <li>Milk</li>
-                    <li>Plain tofu</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <div class="diet-section">
-              <div class="diet-section-label info">
-                <i class="ti ti-info-circle" aria-hidden="true"></i> Best cuisine types
-              </div>
-              <div class="cuisine-tags">
-                <span class="cuisine-tag">South Indian</span>
-                <span class="cuisine-tag">Italian</span>
-                <span class="cuisine-tag">Eastern European</span>
-                <span class="cuisine-tag">Japanese (plain tofu/rice)</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <div class="card-area" id="dietCard"></div>
       </div>
 
       <!-- FIND RESTAURANTS TAB -->
@@ -181,6 +95,11 @@
         <div class="main-header">
           <div class="main-title">Safe places</div>
           <div class="header-sub">Restaurants you've vetted and trust &mdash; saved to this browser only</div>
+          <div class="header-actions" style="margin-top:8px">
+            <button class="action-btn" id="exportBtn" onclick="exportSaved()">
+              <i class="ti ti-download" aria-hidden="true"></i> Export
+            </button>
+          </div>
         </div>
         <div class="results-area" id="savedArea">
           <div class="empty-state" id="savedEmpty">
@@ -271,6 +190,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

@@ -1,10 +1,10 @@
-const FIELD_MASK = 'places.id,places.displayName,places.primaryTypeDisplayName,places.types,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.nationalPhoneNumber,places.googleMapsUri,places.photos.name';
+const FIELD_MASK = 'places.id,places.displayName,places.primaryTypeDisplayName,places.types,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.nationalPhoneNumber,places.googleMapsUri,places.photos.name,places.regularOpeningHours.openNow,places.regularOpeningHours.weekdayDescriptions,places.priceLevel';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { location, lat, lng, radius } = req.query;
+  const { location, lat, lng, radius, restrictions } = req.query;
   const radiusMeters = Math.min(Math.max(parseInt(radius || '16') * 1000, 1000), 50000);
   const key = process.env.GOOGLE_PLACES_KEY;
 
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       const data = await placesRes.json();
       if (!placesRes.ok) return res.status(500).json({ error: data.error?.message || 'Places API error' });
       const restaurants = mapPlaces(data.places);
-      return res.json({ restaurants: await enrichWithSuggestions(restaurants), coords });
+      return res.json({ restaurants: await enrichWithSuggestions(restaurants, restrictions), coords });
 
     } else {
       // For US zip codes, resolve to lat/lng via free public API (no key needed), then nearbySearch
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
             const data = await placesRes.json();
             if (!placesRes.ok) return res.status(500).json({ error: data.error?.message || 'Places API error' });
             const rNearby = mapPlaces(data.places);
-            return res.json({ restaurants: await enrichWithSuggestions(rNearby), coords });
+            return res.json({ restaurants: await enrichWithSuggestions(rNearby, restrictions), coords });
           }
         }
       }
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
       if (restaurants.length && data.places[0]?.location) {
         coords = { lat: data.places[0].location.latitude, lng: data.places[0].location.longitude };
       }
-      return res.json({ restaurants: await enrichWithSuggestions(restaurants), coords });
+      return res.json({ restaurants: await enrichWithSuggestions(restaurants, restrictions), coords });
     }
 
   } catch (err) {
@@ -81,15 +81,18 @@ export default async function handler(req, res) {
 // Dietary context sent to Claude for every suggestion request
 const DIET_CONTEXT = `The diner is: vegetarian (no meat or fish), cannot eat garlic or onion (medical intolerance — not a preference), needs rennet-free cheese only (mozzarella and ricotta are fine; ask about cheddar/parmesan), no seeds of any kind, no whole grains or bran, no gravy.`;
 
-async function enrichWithSuggestions(restaurants) {
+async function enrichWithSuggestions(restaurants, restrictions) {
   const claudeKey = process.env.ANTHROPIC_API_KEY;
   if (!claudeKey || !restaurants.length) return restaurants;
 
+  const dietContext = restrictions
+    ? `The diner cannot eat: ${restrictions}. They are vegetarian (no meat or fish) and need rennet-free cheese.`
+    : DIET_CONTEXT;
+
   try {
-    // Cap at 10 to stay within Vercel's 10s function timeout
-    const toEnrich = restaurants.slice(0, 10);
+    const toEnrich = restaurants;
     const list = toEnrich.map(r => `${r.id}|||${r.name}|||${r.cuisine}`).join('\n');
-    const prompt = `${DIET_CONTEXT}
+    const prompt = `${dietContext}
 
 For each restaurant below, suggest 2–4 specific menu items that are LIKELY to appear on their menu AND would be safe for this diner. Be specific to what that restaurant type actually serves — don't suggest "mashed potatoes" at a sushi restaurant. If nothing is clearly safe, say so briefly.
 
@@ -110,7 +113,7 @@ ${list}`;
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2048,
+        max_tokens: 1500,
         messages: [{ role: 'user', content: prompt }]
       })
     });
@@ -127,7 +130,7 @@ ${list}`;
 
     return restaurants.map((r, i) => ({
       ...r,
-      aiDishes: i < 10 ? (byId[r.id] || null) : null
+      aiDishes: byId[r.id] || null
     }));
   } catch {
     return restaurants;
@@ -188,5 +191,8 @@ function mapPlaces(places = []) {
     mapsUrl: p.googleMapsUri || null,
     location: p.location,
     photoName: p.photos?.[0]?.name || null,
+    openNow: p.regularOpeningHours?.openNow ?? null,
+    weekdayHours: p.regularOpeningHours?.weekdayDescriptions || null,
+    priceLevel: p.priceLevel || null,
   }));
 }
