@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
   <div class="app">
@@ -26,6 +26,9 @@
         <button class="nav-btn" onclick="showTab('saved')" id="nav-saved">
           <i class="ti ti-heart" aria-hidden="true"></i> Safe places
           <span class="saved-count" id="savedCount"></span>
+        </button>
+        <button class="nav-btn" onclick="showTab('howto')" id="nav-howto">
+          <i class="ti ti-help-circle" aria-hidden="true"></i> How to use
         </button>
       </nav>
       <hr class="sidebar-divider">
@@ -177,7 +180,7 @@
       <div class="tab-panel" id="tab-saved">
         <div class="main-header">
           <div class="main-title">Safe places</div>
-          <div class="header-sub">Restaurants you've vetted and trust</div>
+          <div class="header-sub">Restaurants you've vetted and trust &mdash; saved to this browser only</div>
         </div>
         <div class="results-area" id="savedArea">
           <div class="empty-state" id="savedEmpty">
@@ -185,6 +188,66 @@
             <div class="empty-title">No saved places yet</div>
             <div class="empty-sub">Find a restaurant and save it here with notes</div>
           </div>
+        </div>
+      </div>
+
+      <!-- HOW TO USE TAB -->
+      <div class="tab-panel" id="tab-howto">
+        <div class="main-header">
+          <div class="main-title">How to use</div>
+          <div class="header-sub">Getting the most out of MenuMatch</div>
+        </div>
+        <div class="howto-area">
+
+          <div class="howto-section">
+            <div class="howto-step-num">1</div>
+            <div class="howto-step-body">
+              <div class="howto-step-title">Show your diet card to the server</div>
+              <p>Open the <strong>Diet card</strong> tab and hand your phone to the server, or print/copy the card text before you go. It lists exactly what you can't eat and what to ask the kitchen.</p>
+            </div>
+          </div>
+
+          <div class="howto-section">
+            <div class="howto-step-num">2</div>
+            <div class="howto-step-body">
+              <div class="howto-step-title">Search for nearby restaurants</div>
+              <p>Go to <strong>Find restaurants</strong> and enter a city, zip code, or use <em>Near me</em>. Adjust the radius (5 / 10 / 25 mi) to widen or narrow results. Use the cuisine filter to focus on South Indian, Italian, Eastern European, or Japanese — the cuisine types most compatible with your diet.</p>
+            </div>
+          </div>
+
+          <div class="howto-section">
+            <div class="howto-step-num">3</div>
+            <div class="howto-step-body">
+              <div class="howto-step-title">Review the "Likely safe to order" dishes</div>
+              <p>Each restaurant card shows dishes likely to be on the menu that fit your restrictions. These are AI-generated suggestions — not guaranteed. Always confirm with the server, especially for garlic/onion and rennet-free cheese.</p>
+              <div class="howto-note"><i class="ti ti-alert-triangle"></i> AI suggestions are based on typical menus for that cuisine type. Actual menus vary. Always double-check.</div>
+            </div>
+          </div>
+
+          <div class="howto-section">
+            <div class="howto-step-num">4</div>
+            <div class="howto-step-body">
+              <div class="howto-step-title">Call ahead with the script</div>
+              <p>Tap <strong>Call script</strong> on any restaurant card to get a ready-to-read phone script. It includes the restaurant's name and a clear explanation of your dietary needs so you can confirm they can accommodate you before making a trip.</p>
+            </div>
+          </div>
+
+          <div class="howto-section">
+            <div class="howto-step-num">5</div>
+            <div class="howto-step-body">
+              <div class="howto-step-title">Save places you trust</div>
+              <p>After a successful meal, tap <strong>Save</strong> on the restaurant card and add a personal note (e.g. "Ask for Maria, she knows my order"). Saved places appear in the <strong>Safe places</strong> tab. Note: saves are stored in this browser only — they won't carry over to other devices.</p>
+            </div>
+          </div>
+
+          <div class="howto-section">
+            <div class="howto-step-num">6</div>
+            <div class="howto-step-body">
+              <div class="howto-step-title">Share a restaurant with someone</div>
+              <p>Tap <strong>Share</strong> on any card to copy the restaurant's name, address, phone number, and suggested safe dishes to your clipboard. Paste it into a text or email to share with a travel companion.</p>
+            </div>
+          </div>
+
         </div>
       </div>
 

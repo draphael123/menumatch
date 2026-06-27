@@ -166,6 +166,17 @@ html, body { height: 100%; font-family: 'DM Sans', system-ui, sans-serif; backgr
 .modal-copy-btn { background: var(--amber); border: none; border-radius: var(--radius); padding: 8px 20px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: #1a1208; cursor: pointer; display: flex; align-items: center; gap: 6px; }
 .modal-copy-btn:hover { background: var(--amber-dark); color: #fff; }
 
+/* ── How to use ── */
+.howto-area { padding: 24px; display: flex; flex-direction: column; gap: 0; overflow-y: auto; max-height: calc(100vh - 120px); }
+.howto-section { display: flex; gap: 16px; padding: 20px 0; border-bottom: 0.5px solid #e0d8cc; }
+.howto-section:last-child { border-bottom: none; }
+.howto-step-num { flex-shrink: 0; width: 32px; height: 32px; background: var(--amber); color: #1a1208; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; margin-top: 2px; }
+.howto-step-body { flex: 1; }
+.howto-step-title { font-weight: 600; font-size: 14px; color: #1a1208; margin-bottom: 6px; }
+.howto-step-body p { font-size: 13px; line-height: 1.65; color: #5a4a32; }
+.howto-note { margin-top: 10px; background: #faeeda; border-left: 3px solid var(--amber); border-radius: 0 6px 6px 0; padding: 8px 12px; font-size: 12px; color: #6b4e22; display: flex; align-items: flex-start; gap: 6px; line-height: 1.5; }
+.howto-note .ti { flex-shrink: 0; margin-top: 1px; }
+
 /* ── Animations ── */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinning { animation: spin 0.9s linear infinite; display: inline-block; }
