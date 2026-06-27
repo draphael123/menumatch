@@ -34,7 +34,7 @@ export default async function handler(req, res) {
       const placesRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': FIELD_MASK },
-        body: JSON.stringify({ textQuery: `restaurants near ${location}`, maxResultCount: 20 })
+        body: JSON.stringify({ textQuery: `restaurants near ${location}`, maxResultCount: 20, regionCode: 'US', languageCode: 'en' })
       });
       const data = await placesRes.json();
       if (!placesRes.ok) return res.status(500).json({ error: data.error?.message || 'Places API error' });
