@@ -248,28 +248,9 @@ function renderDietCard() {
           </div>
         </div>
 
-        <div class="diet-section">
-          <div class="diet-section-label avoid">
-            <i class="ti ti-circle-x" aria-hidden="true"></i> I cannot eat
-          </div>
-          <div class="diet-items">
-            ${active.map(r => `<span class="diet-item avoid">${r.label}</span>`).join('')}
-            ${!active.length ? '<span style="font-size:12px;color:#9CA3AF">No active restrictions</span>' : ''}
-          </div>
-        </div>
-
-        <div class="diet-section">
-          <div class="diet-section-label ask">
-            <i class="ti ti-help-circle" aria-hidden="true"></i> Please ask the kitchen
-          </div>
-          <div class="ask-box">
-            "Can this dish be prepared <strong>without garlic or onion</strong>? I have a medical intolerance."
-          </div>
-        </div>
-
-        <div class="diet-section">
+        <div class="diet-section diet-section-safe-prominent">
           <div class="diet-section-label safe">
-            <i class="ti ti-circle-check" aria-hidden="true"></i> I can safely eat
+            <i class="ti ti-circle-check" aria-hidden="true"></i> I can safely eat — suggest one of these
           </div>
           <div class="safe-grid">
             <div class="safe-category">
@@ -307,6 +288,25 @@ function renderDietCard() {
                 <li>Plain tofu</li>
               </ul>
             </div>
+          </div>
+        </div>
+
+        <div class="diet-section">
+          <div class="diet-section-label avoid">
+            <i class="ti ti-circle-x" aria-hidden="true"></i> I cannot eat
+          </div>
+          <div class="diet-items">
+            ${active.map(r => `<span class="diet-item avoid">${r.label}</span>`).join('')}
+            ${!active.length ? '<span style="font-size:12px;color:#9CA3AF">No active restrictions</span>' : ''}
+          </div>
+        </div>
+
+        <div class="diet-section">
+          <div class="diet-section-label ask">
+            <i class="ti ti-help-circle" aria-hidden="true"></i> Please ask the kitchen
+          </div>
+          <div class="ask-box">
+            "Can this dish be prepared <strong>without garlic or onion</strong>? I have a medical intolerance."
           </div>
         </div>
 
@@ -566,9 +566,14 @@ function renderResults(restaurants) {
     return (b.rating || 0) - (a.rating || 0);
   });
 
-  if (!filtered.length) {
-    area.innerHTML = `<div class="results-header">0 results for this filter — <button onclick="setFilter(document.querySelector('[data-cuisine=all]'), 'all')" style="background:none;border:none;color:var(--amber);cursor:pointer;font-size:12px;">show all</button></div>`;
-    return;
+  let widenedNotice = '';
+  if (!filtered.length && activeFilter !== 'all') {
+    // Auto-widen: show all results rather than a dead end
+    filtered = restaurants.slice().sort((a, b) => {
+      if (currentCoords) return distanceMiles(currentCoords, a.location) - distanceMiles(currentCoords, b.location);
+      return (b.rating || 0) - (a.rating || 0);
+    });
+    widenedNotice = `<div class="filter-widened-notice"><i class="ti ti-info-circle" aria-hidden="true"></i> No "${activeFilter}" restaurants found nearby — showing all ${filtered.length} results instead</div>`;
   }
 
   const savedIds = new Set(savedPlaces.map(p => p.id));
@@ -580,12 +585,14 @@ function renderResults(restaurants) {
   const day = new Date().getDay();
   const todayIdx = day === 0 ? 6 : day - 1;
 
-  area.innerHTML = `<div class="results-header">${filtered.length} restaurant${filtered.length === 1 ? '' : 's'} found — sorted by distance</div>` +
+  area.innerHTML = `<div class="results-header">${filtered.length} restaurant${filtered.length === 1 ? '' : 's'} found — sorted by distance</div>${widenedNotice}` +
     filtered.map(r => {
       const safe = isSafeCuisine(r.cuisine);
       const dist = distanceText(currentCoords, r.location);
       const isSaved = savedIds.has(r.id);
-      const safeDishes = r.aiDishes || getSafeDishes(r.cuisine);
+      // Distinguish: null = AI not run (use local), [] = AI found nothing safe, [...] = AI suggestions
+      const aiExplicitlyEmpty = r.aiDishes !== null && r.aiDishes !== undefined && r.aiDishes.length === 0;
+      const safeDishes = (r.aiDishes && r.aiDishes.length) ? r.aiDishes : (aiExplicitlyEmpty ? [] : getSafeDishes(r.cuisine));
       const eid = r.id.replace(/"/g, '');
 
       // Opening hours badge
@@ -623,23 +630,25 @@ function renderResults(restaurants) {
         <div class="r-details">
           ${openBadge || todayHours ? `<div class="r-detail-row" style="gap:8px">${openBadge}${todayHours}</div>` : ''}
           ${r.address ? `<div class="r-detail-row"><i class="ti ti-map-pin" aria-hidden="true"></i><span>${r.address}</span></div>` : ''}
-          ${r.phone ? `<div class="r-detail-row"><i class="ti ti-phone" aria-hidden="true"></i><a href="tel:${r.phone}">${r.phone}</a></div>` : ''}
           ${r.mapsUrl ? `<div class="r-detail-row"><i class="ti ti-external-link" aria-hidden="true"></i><a href="${r.mapsUrl}" target="_blank" rel="noopener">View on Google Maps</a></div>` : ''}
         </div>
 
         <div class="r-safe-dishes">
-          <div class="r-safe-dishes-label"><i class="ti ti-phone-call" aria-hidden="true"></i> Ask about these dishes${r.aiDishes ? ' <span style="font-size:9px;font-weight:400;opacity:0.7;letter-spacing:0">· AI matched</span>' : ''}</div>
+          <div class="r-safe-dishes-label"><i class="ti ti-phone-call" aria-hidden="true"></i> Ask about these dishes${(r.aiDishes && r.aiDishes.length) ? ' <span style="font-size:9px;font-weight:400;opacity:0.7;letter-spacing:0">· AI matched</span>' : ''}</div>
           <div class="r-call-warning"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Always call ahead — nothing can be assumed safe without kitchen confirmation</div>
-          ${safeDishes.map(d => `<div class="r-dish-row"><span class="r-dish-name">${d.dish}</span><span class="r-dish-note">${d.note}</span></div>`).join('')}
+          ${aiExplicitlyEmpty
+            ? `<div class="r-no-dishes"><i class="ti ti-circle-x" aria-hidden="true"></i> Nothing from your safe list is likely on this menu — still worth calling to ask if they can accommodate you</div>`
+            : safeDishes.map(d => `<div class="r-dish-row"><span class="r-dish-name">${d.dish}</span><span class="r-dish-note">${d.note}</span></div>`).join('')}
         </div>
 
         <div class="r-actions">
+          ${r.phone ? `<a class="r-phone-primary" href="tel:${r.phone}"><i class="ti ti-phone-call" aria-hidden="true"></i> Call ${r.phone}</a>` : ''}
           <div class="r-card-btns">
+            <button class="r-action-btn r-callscript-btn" onclick="showCallScript('${eid}')">
+              <i class="ti ti-script" aria-hidden="true"></i> Call script
+            </button>
             <button class="r-save-btn ${isSaved ? 'saved' : ''}" data-save-id="${eid}" onclick="saveRestaurant(window.__rmap['${eid}'])">
               <i class="ti ti-${isSaved ? 'heart-filled' : 'heart'}" aria-hidden="true"></i> ${isSaved ? 'Saved' : 'Save'}
-            </button>
-            <button class="r-action-btn" onclick="showCallScript('${eid}')">
-              <i class="ti ti-phone" aria-hidden="true"></i> Call script
             </button>
             <button class="r-action-btn" id="share-${eid}" onclick="shareRestaurant('${eid}', this)">
               <i class="ti ti-share" aria-hidden="true"></i> Share

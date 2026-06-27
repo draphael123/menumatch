@@ -304,6 +304,41 @@ html, body { height: 100%; font-family: 'DM Sans', system-ui, sans-serif; backgr
 .r-action-btn:hover { background: var(--indigo-bg); border-color: var(--indigo); color: var(--indigo); }
 .r-action-btn.copied { background: var(--green-bg); border-color: #86EFAC; color: var(--green); }
 
+/* ── Filter widened notice ── */
+.filter-widened-notice {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: #6366F1; background: #EEF2FF;
+  border: 1px solid #C7D2FE; border-radius: 6px;
+  padding: 7px 12px; margin-bottom: 10px;
+}
+
+/* ── Phone primary button ── */
+.r-phone-primary {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; padding: 10px;
+  background: var(--teal); color: #fff;
+  font-size: 14px; font-weight: 600; letter-spacing: 0.01em;
+  border-radius: 8px; text-decoration: none;
+  margin-bottom: 8px;
+  transition: background 0.15s;
+}
+.r-phone-primary:hover { background: #0E7490; }
+
+/* ── Call script button emphasis ── */
+.r-callscript-btn { font-weight: 600; }
+
+/* ── No safe dishes state ── */
+.r-no-dishes {
+  display: flex; align-items: flex-start; gap: 6px;
+  font-size: 11px; color: #6B7280; font-style: italic;
+  padding: 6px 14px 10px; line-height: 1.5;
+}
+.r-no-dishes .ti { font-size: 13px; margin-top: 1px; flex-shrink: 0; color: #D1D5DB; }
+
+/* ── Diet card safe section prominent ── */
+.diet-section-safe-prominent .diet-section-label { font-size: 13px; }
+.diet-section-safe-prominent .safe-grid { border: 2px solid #D1FAE5; border-radius: 8px; padding: 10px; background: #F0FDF4; }
+
 /* ── Call-ahead warning ── */
 .r-call-warning {
   display: flex; align-items: flex-start; gap: 5px;
