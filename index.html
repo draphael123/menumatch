@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MenuMatch — Find restaurants that fit your diet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-logo">Menu<span>Match</span></div>
+        <div class="sidebar-tagline">Find restaurants that fit what you eat</div>
+      </div>
+      <hr class="sidebar-divider">
+      <div>
+        <div class="sidebar-label">My allowed foods</div>
+        <div style="margin-bottom:10px">
+          <div class="food-input-row">
+            <input type="text" id="foodInput" placeholder="e.g. salmon, rice..." maxlength="40" autocomplete="off">
+            <button onclick="addFood()" aria-label="Add food"><i class="ti ti-plus" aria-hidden="true"></i></button>
+          </div>
+        </div>
+        <div class="food-tags" id="foodTags"></div>
+        <div class="food-count" id="foodCount"></div>
+      </div>
+      <hr class="sidebar-divider">
+      <div class="sidebar-note">
+        <i class="ti ti-flask" aria-hidden="true"></i>
+        Prototype using sample data. A production version would use Yelp Fusion or Google Places APIs for live results.
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="main-header">
+        <div class="main-title">Find restaurants near you</div>
+        <div class="search-row">
+          <input type="text" id="locationInput" placeholder="City, zip code, or address..." value="Miami, FL">
+          <button class="loc-btn" onclick="useMyLocation()">
+            <i class="ti ti-current-location" aria-hidden="true"></i> Use my location
+          </button>
+          <button class="search-btn" onclick="runSearch()">Search</button>
+        </div>
+      </div>
+
+      <div class="results-area" id="resultsArea">
+        <div class="empty-state" id="emptyState">
+          <i class="ti ti-tool-kitchen-2 empty-icon" aria-hidden="true"></i>
+          <div class="empty-title">Add your allowed foods, then search</div>
+          <div class="empty-sub">We'll find dishes that match what you can eat</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
