@@ -231,6 +231,9 @@ function setFilter(btn, cuisine) {
   renderResults(allResults);
 }
 
+// Global restaurant lookup — avoids embedding JSON in HTML attributes
+window.__rmap = {};
+
 function renderResults(restaurants) {
   const area = document.getElementById('resultsArea');
   if (!restaurants.length) {
@@ -258,13 +261,16 @@ function renderResults(restaurants) {
 
   const savedIds = new Set(savedPlaces.map(p => p.id));
 
+  // Store in global map so onclick can reference by ID (avoids HTML-encoding issues with inline JSON)
+  filtered.forEach(r => { window.__rmap[r.id] = r; });
+
   area.innerHTML = `<div class="results-header">${filtered.length} restaurant${filtered.length === 1 ? '' : 's'} found — safe cuisines shown first</div>` +
     filtered.map(r => {
       const safe = isSafeCuisine(r.cuisine);
       const dist = distanceText(currentCoords, r.location);
       const isSaved = savedIds.has(r.id);
       const safeDishes = getSafeDishes(r.cuisine);
-      const rJson = JSON.stringify(r).replace(/'/g, "&#39;");
+      const eid = r.id.replace(/"/g, '');
 
       return `<div class="r-card${safe ? ' r-card-safe' : ''}">
         <div class="r-card-header">
@@ -283,21 +289,16 @@ function renderResults(restaurants) {
         <div class="r-details">
           ${r.address ? `<div class="r-detail-row"><i class="ti ti-map-pin" aria-hidden="true"></i><span>${r.address}</span></div>` : ''}
           ${r.phone ? `<div class="r-detail-row"><i class="ti ti-phone" aria-hidden="true"></i><a href="tel:${r.phone}">${r.phone}</a></div>` : ''}
-          ${r.mapsUrl ? `<div class="r-detail-row"><i class="ti ti-external-link" aria-hidden="true"></i><a href="${r.mapsUrl}" target="_blank" rel="noopener">View menu on Google Maps</a></div>` : ''}
+          ${r.mapsUrl ? `<div class="r-detail-row"><i class="ti ti-external-link" aria-hidden="true"></i><a href="${r.mapsUrl}" target="_blank" rel="noopener">View on Google Maps</a></div>` : ''}
         </div>
 
-        ${safeDishes.length ? `
         <div class="r-safe-dishes">
           <div class="r-safe-dishes-label"><i class="ti ti-circle-check" aria-hidden="true"></i> Likely safe to order</div>
-          ${safeDishes.map(d => `
-            <div class="r-dish-row">
-              <span class="r-dish-name">${d.dish}</span>
-              <span class="r-dish-note">${d.note}</span>
-            </div>`).join('')}
-        </div>` : ''}
+          ${safeDishes.map(d => `<div class="r-dish-row"><span class="r-dish-name">${d.dish}</span><span class="r-dish-note">${d.note}</span></div>`).join('')}
+        </div>
 
         <div class="r-actions">
-          <button class="r-save-btn ${isSaved ? 'saved' : ''}" data-save-id="${r.id}" onclick='saveRestaurant(${rJson})'>
+          <button class="r-save-btn ${isSaved ? 'saved' : ''}" data-save-id="${eid}" onclick="saveRestaurant(window.__rmap['${eid}'])">
             <i class="ti ti-${isSaved ? 'heart-filled' : 'heart'}" aria-hidden="true"></i> ${isSaved ? 'Saved' : 'Save place'}
           </button>
         </div>

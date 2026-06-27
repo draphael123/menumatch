@@ -31,6 +31,29 @@ export default async function handler(req, res) {
       return res.json({ restaurants: mapPlaces(data.places), coords });
 
     } else {
+      // For US zip codes, geocode first to get precise coordinates, then use nearbySearch
+      const isZip = /^\d{5}$/.test(location.trim());
+      if (isZip) {
+        const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&components=country:US&key=${key}`);
+        const geoData = await geoRes.json();
+        if (geoData.status === 'OK' && geoData.results[0]?.geometry?.location) {
+          const loc = geoData.results[0].geometry.location;
+          coords = { lat: loc.lat, lng: loc.lng };
+          const placesRes = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': FIELD_MASK },
+            body: JSON.stringify({
+              includedTypes: ['restaurant', 'cafe', 'meal_takeaway'],
+              maxResultCount: 20,
+              locationRestriction: { circle: { center: { latitude: coords.lat, longitude: coords.lng }, radius: 8000 } }
+            })
+          });
+          const data = await placesRes.json();
+          if (!placesRes.ok) return res.status(500).json({ error: data.error?.message || 'Places API error' });
+          return res.json({ restaurants: mapPlaces(data.places), coords });
+        }
+      }
+
       const placesRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': FIELD_MASK },
