@@ -188,6 +188,5 @@ function mapPlaces(places = []) {
     mapsUrl: p.googleMapsUri || null,
     location: p.location,
     photoName: p.photos?.[0]?.name || null,
-    _rawPlace: Object.keys(p),
   }));
 }
