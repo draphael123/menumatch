@@ -115,17 +115,12 @@ ${list}`;
       })
     });
 
-    if (!aiRes.ok) {
-      const errText = await aiRes.text();
-      return restaurants.map((r, i) => i === 0 ? { ...r, _aiDebug: `HTTP ${aiRes.status}: ${errText.slice(0, 200)}` } : r);
-    }
+    if (!aiRes.ok) return restaurants;
 
     const aiData = await aiRes.json();
     const raw = aiData.content?.[0]?.text || '';
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return restaurants.map((r, i) => i === 0 ? { ...r, _aiDebug: `no JSON match in: ${raw.slice(0, 200)}` } : r);
-    }
+    if (!jsonMatch) return restaurants;
 
     const { suggestions } = JSON.parse(jsonMatch[0]);
     const byId = Object.fromEntries(suggestions.map(s => [s.id, s.dishes]));
@@ -134,8 +129,8 @@ ${list}`;
       ...r,
       aiDishes: i < 10 ? (byId[r.id] || null) : null
     }));
-  } catch (e) {
-    return restaurants.map((r, i) => i === 0 ? { ...r, _aiDebug: `catch: ${e.message}` } : r);
+  } catch {
+    return restaurants;
   }
 }
 
