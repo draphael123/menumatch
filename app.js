@@ -281,26 +281,9 @@ function renderResults(restaurants) {
       const safeDishes = r.aiDishes || getSafeDishes(r.cuisine);
       const eid = r.id.replace(/"/g, '');
 
-      const photoId = `photo-${eid}`;
-      if (r.photoName) {
-        fetch(`/api/photo?name=${encodeURIComponent(r.photoName)}`)
-          .then(res => res.ok ? res.json() : null)
-          .then(data => {
-            if (data?.url) {
-              const el = document.getElementById(photoId);
-              if (el) {
-                el.style.backgroundImage = `url(${data.url})`;
-                el.style.backgroundSize = 'cover';
-                el.style.backgroundPosition = 'center';
-                el.textContent = '';
-              }
-            }
-          }).catch(() => {});
-      }
-
       return `<div class="r-card${safe ? ' r-card-safe' : ''}">
         <div class="r-card-header">
-          <div class="r-icon" id="${photoId}">${cuisineIcon(r.cuisine)}</div>
+          <div class="r-icon" id="photo-${eid}">${cuisineIcon(r.cuisine)}</div>
           <div class="r-meta">
             <div class="r-name">${r.name}</div>
             <div class="r-sub">
@@ -340,6 +323,24 @@ function renderResults(restaurants) {
         </div>
       </div>`;
     }).join('');
+
+  // Load photos after DOM is set
+  filtered.forEach(r => {
+    if (!r.photoName) return;
+    const eid = r.id.replace(/"/g, '');
+    fetch(`/api/photo?name=${encodeURIComponent(r.photoName)}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!data?.url) return;
+        const el = document.getElementById(`photo-${eid}`);
+        if (el) {
+          el.style.backgroundImage = `url(${data.url})`;
+          el.style.backgroundSize = 'cover';
+          el.style.backgroundPosition = 'center';
+          el.textContent = '';
+        }
+      }).catch(() => {});
+  });
 }
 
 // ── Call-ahead script ──
