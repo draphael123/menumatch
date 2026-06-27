@@ -394,10 +394,8 @@ const CUISINE_SAFE_DISHES = [
   {
     keywords: ['japanese', 'sushi', 'ramen', 'izakaya', 'tempura'],
     dishes: [
-      { dish: 'Steamed white rice', note: 'Safe as-is' },
-      { dish: 'Plain baked or steamed tofu', note: 'Ask: no garlic or onion in marinade' },
-      { dish: 'Edamame', note: 'Safe as-is' },
-      { dish: 'Miso soup', note: 'Ask: no onion, confirm vegetarian dashi' },
+      { dish: 'Steamed white rice', note: 'Ask: plain, no seasoning with garlic or onion' },
+      { dish: 'Plain baked or steamed tofu', note: 'Ask: no garlic or onion in marinade or sauce' },
     ]
   },
   {
@@ -544,9 +542,18 @@ function renderResults(restaurants) {
     return;
   }
 
+  // Broader filter aliases — Google often labels restaurants more generically
+  const FILTER_ALIASES = {
+    'south indian': c => c.includes('south indian') || c.includes('indian'),
+    'italian':      c => c.includes('italian') || c.includes('pizza'),
+    'eastern european': c => c.includes('eastern european') || c.includes('polish') || c.includes('ukrainian'),
+    'japanese':     c => c.includes('japanese') || c.includes('sushi') || c.includes('ramen'),
+  };
+
   let filtered = restaurants;
   if (activeFilter !== 'all') {
-    filtered = restaurants.filter(r => (r.cuisine || '').toLowerCase().includes(activeFilter));
+    const matchFn = FILTER_ALIASES[activeFilter] || (c => c.includes(activeFilter));
+    filtered = restaurants.filter(r => matchFn((r.cuisine || '').toLowerCase()));
   }
 
   // Sort by distance (closest first); fall back to rating if no coords
@@ -621,11 +628,10 @@ function renderResults(restaurants) {
         </div>
 
         <div class="r-safe-dishes">
-          <div class="r-safe-dishes-label"><i class="ti ti-circle-check" aria-hidden="true"></i> Likely safe to order${r.aiDishes ? ' <span style="font-size:9px;font-weight:400;opacity:0.7;letter-spacing:0">· AI suggestions</span>' : ''}</div>
+          <div class="r-safe-dishes-label"><i class="ti ti-phone-call" aria-hidden="true"></i> Ask about these dishes${r.aiDishes ? ' <span style="font-size:9px;font-weight:400;opacity:0.7;letter-spacing:0">· AI matched</span>' : ''}</div>
+          <div class="r-call-warning"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Always call ahead — nothing can be assumed safe without kitchen confirmation</div>
           ${safeDishes.map(d => `<div class="r-dish-row"><span class="r-dish-name">${d.dish}</span><span class="r-dish-note">${d.note}</span></div>`).join('')}
         </div>
-
-        ${r.aiDishes ? `<div class="r-ai-note">Suggestions based on cuisine type — always confirm with staff</div>` : ''}
 
         <div class="r-actions">
           <div class="r-card-btns">

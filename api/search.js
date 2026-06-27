@@ -78,28 +78,46 @@ export default async function handler(req, res) {
   }
 }
 
-// Dietary context sent to Claude for every suggestion request
-const DIET_CONTEXT = `The diner is: vegetarian (no meat or fish), cannot eat garlic or onion (medical intolerance — not a preference), needs rennet-free cheese only (mozzarella and ricotta are fine; ask about cheddar/parmesan), no seeds of any kind, no whole grains or bran, no gravy.`;
+// The ONLY foods this diner can safely eat
+const SAFE_FOOD_LIST = `
+SAFE FOODS — the ONLY things this diner can eat:
+• White pizza (no garlic in dough or topping, rennet-free mozzarella)
+• Pasta with passata (plain strained tomato sauce only — no garlic, no onion)
+• Plain dosa (no garlic/onion in batter or chutney)
+• Idli (steamed rice cakes, no garlic/onion in sambar)
+• Masoor dal / split red lentil soup (no garlic or onion)
+• Pierogi with potato and farmer's cheese (no onion in filling or topping)
+• Mashed potatoes with milk (no gravy, no garlic, no onion)
+• Potato casserole (no garlic or onion)
+• Steamed plain white rice
+• Scrambled or fried eggs (no garlic or onion)
+• Plain baked or steamed tofu (no garlic/onion marinade)
+• Rennet-free mozzarella or ricotta dishes
+
+ABSOLUTELY CANNOT EAT (incomplete list, but key items):
+• Garlic or onion (severe medical intolerance — includes powders, hidden in sauces)
+• Meat or fish
+• Seeds of any kind (sesame, sunflower, poppy, pumpkin, etc.)
+• Cheese made with animal rennet (cheddar, parmesan, most aged cheeses unless labelled vegetarian)
+• Gravy
+• Whole grains or bran
+• ALL vegetables (salad, cooked vegetables, vegetable dishes — these are NOT safe)
+• Sauces or condiments that may contain garlic or onion`;
 
 async function enrichWithSuggestions(restaurants, restrictions) {
   const claudeKey = process.env.ANTHROPIC_API_KEY;
   if (!claudeKey || !restaurants.length) return restaurants;
 
-  const dietContext = restrictions
-    ? `The diner cannot eat: ${restrictions}. They are vegetarian (no meat or fish) and need rennet-free cheese.`
-    : DIET_CONTEXT;
-
   try {
-    const toEnrich = restaurants;
-    const list = toEnrich.map(r => `${r.id}|||${r.name}|||${r.cuisine}`).join('\n');
-    const prompt = `${dietContext}
+    const list = restaurants.map(r => `${r.id}|||${r.name}|||${r.cuisine}`).join('\n');
+    const prompt = `${SAFE_FOOD_LIST}
 
-For each restaurant below, suggest 2–4 specific menu items that are LIKELY to appear on their menu AND would be safe for this diner. Be specific to what that restaurant type actually serves — don't suggest "mashed potatoes" at a sushi restaurant. If nothing is clearly safe, say so briefly.
+CRITICAL INSTRUCTION: You may ONLY suggest dishes from the SAFE FOODS list above. Do NOT suggest salads, vegetables, soups with vegetables, or any dish not explicitly listed as safe. If nothing from the safe list is likely on this restaurant's menu, respond with an empty dishes array for that restaurant.
 
-Respond ONLY with valid JSON in this exact shape:
-{"suggestions":[{"id":"...","dishes":[{"dish":"...","note":"..."}]}]}
+For each restaurant below, look at the cuisine type and identify which items from the SAFE FOODS list (if any) are likely to appear on their menu. Suggest 1–3 matching items ONLY. Every suggestion must include a note telling the diner what to confirm with the kitchen.
 
-The "note" should be a short instruction to give the server (e.g. "Ask: no garlic, confirm rennet-free cheese").
+Respond ONLY with valid JSON:
+{"suggestions":[{"id":"...","dishes":[{"dish":"...","note":"Call ahead to confirm: ..."}]}]}
 
 Restaurants (id|||name|||cuisine):
 ${list}`;
