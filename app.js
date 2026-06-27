@@ -269,7 +269,7 @@ function renderResults(restaurants) {
       const safe = isSafeCuisine(r.cuisine);
       const dist = distanceText(currentCoords, r.location);
       const isSaved = savedIds.has(r.id);
-      const safeDishes = getSafeDishes(r.cuisine);
+      const safeDishes = r.aiDishes || getSafeDishes(r.cuisine);
       const eid = r.id.replace(/"/g, '');
 
       return `<div class="r-card${safe ? ' r-card-safe' : ''}">
@@ -293,7 +293,7 @@ function renderResults(restaurants) {
         </div>
 
         <div class="r-safe-dishes">
-          <div class="r-safe-dishes-label"><i class="ti ti-circle-check" aria-hidden="true"></i> Likely safe to order</div>
+          <div class="r-safe-dishes-label"><i class="ti ti-circle-check" aria-hidden="true"></i> Likely safe to order${r.aiDishes ? ' <span style="font-size:9px;font-weight:400;opacity:0.7;letter-spacing:0">· AI suggestions</span>' : ''}</div>
           ${safeDishes.map(d => `<div class="r-dish-row"><span class="r-dish-name">${d.dish}</span><span class="r-dish-note">${d.note}</span></div>`).join('')}
         </div>
 
