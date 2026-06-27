@@ -164,7 +164,7 @@ const CUISINE_SAFE_DISHES = [
     ]
   },
   {
-    keywords: ['american', 'diner', 'cafe', 'grill', 'bistro', 'restaurant', 'bar', 'pub', 'tavern', 'kitchen', 'eatery', 'food'],
+    keywords: ['american', 'diner', 'cafe', 'coffee', 'grill', 'bistro', 'restaurant', 'bar', 'pub', 'tavern', 'kitchen', 'eatery', 'food', 'brewery', 'winery', 'farm', 'market', 'bakery', 'brasserie', 'steakhouse', 'seafood', 'brunch'],
     dishes: [
       { dish: 'Mashed potatoes', note: 'Ask: with milk only, no gravy, no onion or garlic' },
       { dish: 'Scrambled or fried eggs', note: 'Ask: no onion or garlic' },
@@ -187,7 +187,9 @@ function getSafeDishes(cuisine) {
       return [...group.dishes, ...UNIVERSAL_TIPS];
     }
   }
-  return UNIVERSAL_TIPS;
+  // Generic fallback — always show actual dish suggestions, not just tips
+  const generic = CUISINE_SAFE_DISHES[CUISINE_SAFE_DISHES.length - 1];
+  return [...generic.dishes, ...UNIVERSAL_TIPS];
 }
 
 // ── Restaurant search ──
@@ -214,13 +216,18 @@ function isSafeCuisine(cuisine) {
   return SAFE_CUISINES.some(s => c.includes(s));
 }
 
-function distanceText(userCoords, loc) {
-  if (!userCoords || !loc) return '';
+function distanceMiles(userCoords, loc) {
+  if (!userCoords || !loc) return 9999;
   const R = 3958.8;
   const dLat = (loc.latitude - userCoords.lat) * Math.PI / 180;
   const dLon = (loc.longitude - userCoords.lng) * Math.PI / 180;
   const a = Math.sin(dLat/2)**2 + Math.cos(userCoords.lat * Math.PI/180) * Math.cos(loc.latitude * Math.PI/180) * Math.sin(dLon/2)**2;
-  const miles = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function distanceText(userCoords, loc) {
+  if (!userCoords || !loc) return '';
+  const miles = distanceMiles(userCoords, loc);
   return miles < 0.1 ? 'nearby' : `${miles.toFixed(1)} mi`;
 }
 
@@ -246,11 +253,13 @@ function renderResults(restaurants) {
     filtered = restaurants.filter(r => (r.cuisine || '').toLowerCase().includes(activeFilter));
   }
 
-  // Sort: safe cuisines first, then by rating
+  // Sort by distance (closest first); fall back to rating if no coords
   filtered.sort((a, b) => {
-    const aS = isSafeCuisine(a.cuisine) ? 1 : 0;
-    const bS = isSafeCuisine(b.cuisine) ? 1 : 0;
-    if (bS !== aS) return bS - aS;
+    if (currentCoords) {
+      const da = distanceMiles(currentCoords, a.location);
+      const db = distanceMiles(currentCoords, b.location);
+      return da - db;
+    }
     return (b.rating || 0) - (a.rating || 0);
   });
 
@@ -264,7 +273,7 @@ function renderResults(restaurants) {
   // Store in global map so onclick can reference by ID (avoids HTML-encoding issues with inline JSON)
   filtered.forEach(r => { window.__rmap[r.id] = r; });
 
-  area.innerHTML = `<div class="results-header">${filtered.length} restaurant${filtered.length === 1 ? '' : 's'} found — safe cuisines shown first</div>` +
+  area.innerHTML = `<div class="results-header">${filtered.length} restaurant${filtered.length === 1 ? '' : 's'} found — sorted by distance</div>` +
     filtered.map(r => {
       const safe = isSafeCuisine(r.cuisine);
       const dist = distanceText(currentCoords, r.location);
