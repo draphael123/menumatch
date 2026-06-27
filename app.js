@@ -100,6 +100,63 @@ BEST CUISINES: South Indian, Italian, Eastern European, Japanese`;
   });
 }
 
+// ── Safe dish suggestions by cuisine ──
+const CUISINE_SAFE_DISHES = {
+  'south indian': [
+    { dish: 'Plain dosa', note: 'Ask: no onion or garlic in batter or filling' },
+    { dish: 'Masoor dal', note: 'Ask: prepared without onion or garlic' },
+    { dish: 'Idli with plain sambar', note: 'Ask: sambar without onion or garlic' },
+    { dish: 'Plain rice', note: 'Safe as-is' },
+  ],
+  'indian': [
+    { dish: 'Plain basmati rice', note: 'Safe as-is' },
+    { dish: 'Dal (split red lentils)', note: 'Ask: no onion or garlic' },
+    { dish: 'Paneer dishes', note: 'Ask: no onion or garlic, check rennet-free' },
+  ],
+  'italian': [
+    { dish: 'White pizza (bianca)', note: 'Ask: no garlic in the dough or topping' },
+    { dish: 'Pasta with passata', note: 'Ask: plain tomato sauce, no garlic or onion' },
+    { dish: 'Ricotta dishes', note: 'Ask: no garlic' },
+    { dish: 'Mozzarella (rennet-free)', note: 'Confirm rennet-free with kitchen' },
+  ],
+  'eastern european': [
+    { dish: 'Pierogi (potato & cheese)', note: 'Ask: farmer\'s cheese filling, no onion' },
+    { dish: 'Mashed potatoes', note: 'Ask: with milk only, no gravy or onion' },
+    { dish: 'Potato casserole', note: 'Ask: no onion or garlic' },
+  ],
+  'polish': [
+    { dish: 'Pierogi ruskie', note: 'Ask: potato & cheese filling, no onion topping' },
+    { dish: 'Potato pancakes', note: 'Ask: no onion' },
+  ],
+  'ukrainian': [
+    { dish: 'Varenyky (potato & cheese)', note: 'Ask: no onion in filling or topping' },
+  ],
+  'japanese': [
+    { dish: 'Steamed white rice', note: 'Safe as-is' },
+    { dish: 'Plain baked or steamed tofu', note: 'Ask: no garlic or onion in marinade' },
+    { dish: 'Miso soup', note: 'Ask: no onion, confirm vegetarian dashi' },
+    { dish: 'Edamame', note: 'Safe as-is' },
+  ],
+  'vegetarian': [
+    { dish: 'Check menu for rice, pasta, or egg dishes', note: 'Ask: no garlic or onion in preparation' },
+  ],
+  'vegan': [
+    { dish: 'Plain rice or tofu dishes', note: 'Ask: no garlic or onion' },
+  ],
+  'mediterranean': [
+    { dish: 'White rice dishes', note: 'Ask: no garlic or onion' },
+    { dish: 'Halloumi (check rennet-free)', note: 'Confirm vegetarian rennet' },
+  ],
+};
+
+function getSafeDishes(cuisine) {
+  const c = (cuisine || '').toLowerCase();
+  for (const [key, dishes] of Object.entries(CUISINE_SAFE_DISHES)) {
+    if (c.includes(key)) return dishes;
+  }
+  return [];
+}
+
 // ── Restaurant search ──
 const SAFE_CUISINES = ['south indian', 'indian', 'italian', 'eastern european', 'polish', 'ukrainian', 'japanese', 'vegetarian', 'vegan'];
 let allResults = [];
@@ -173,7 +230,10 @@ function renderResults(restaurants) {
       const safe = isSafeCuisine(r.cuisine);
       const dist = distanceText(currentCoords, r.location);
       const isSaved = savedIds.has(r.id);
-      return `<div class="r-card" style="${safe ? 'border-color:#C0DD97' : ''}">
+      const safeDishes = getSafeDishes(r.cuisine);
+      const rJson = JSON.stringify(r).replace(/'/g, "&#39;");
+
+      return `<div class="r-card${safe ? ' r-card-safe' : ''}">
         <div class="r-card-header">
           <div class="r-icon">${cuisineIcon(r.cuisine)}</div>
           <div class="r-meta">
@@ -183,12 +243,28 @@ function renderResults(restaurants) {
               <span>${r.cuisine}</span>
               ${dist ? `<span>·</span><span>${dist}</span>` : ''}
             </div>
-            <div class="r-address">${r.address}</div>
           </div>
-          ${safe ? `<span style="font-size:10px;padding:3px 8px;border-radius:20px;background:#EAF3DE;color:#27500A;border:0.5px solid #C0DD97;white-space:nowrap;flex-shrink:0;align-self:flex-start">Safe cuisine</span>` : ''}
+          ${safe ? `<span class="safe-badge">Safe cuisine</span>` : ''}
         </div>
+
+        <div class="r-details">
+          ${r.address ? `<div class="r-detail-row"><i class="ti ti-map-pin" aria-hidden="true"></i><span>${r.address}</span></div>` : ''}
+          ${r.phone ? `<div class="r-detail-row"><i class="ti ti-phone" aria-hidden="true"></i><a href="tel:${r.phone}">${r.phone}</a></div>` : ''}
+          ${r.mapsUrl ? `<div class="r-detail-row"><i class="ti ti-external-link" aria-hidden="true"></i><a href="${r.mapsUrl}" target="_blank" rel="noopener">View menu on Google Maps</a></div>` : ''}
+        </div>
+
+        ${safeDishes.length ? `
+        <div class="r-safe-dishes">
+          <div class="r-safe-dishes-label"><i class="ti ti-circle-check" aria-hidden="true"></i> Likely safe to order</div>
+          ${safeDishes.map(d => `
+            <div class="r-dish-row">
+              <span class="r-dish-name">${d.dish}</span>
+              <span class="r-dish-note">${d.note}</span>
+            </div>`).join('')}
+        </div>` : ''}
+
         <div class="r-actions">
-          <button class="r-save-btn ${isSaved ? 'saved' : ''}" data-save-id="${r.id}" onclick='saveRestaurant(${JSON.stringify(r).replace(/'/g, "&#39;")})'>
+          <button class="r-save-btn ${isSaved ? 'saved' : ''}" data-save-id="${r.id}" onclick='saveRestaurant(${rJson})'>
             <i class="ti ti-${isSaved ? 'heart-filled' : 'heart'}" aria-hidden="true"></i> ${isSaved ? 'Saved' : 'Save place'}
           </button>
         </div>

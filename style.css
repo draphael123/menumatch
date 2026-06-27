@@ -80,6 +80,21 @@ html, body { height: 100%; font-family: 'DM Sans', system-ui, sans-serif; backgr
 .r-sub { font-size: 12px; color: #9a8060; display: flex; align-items: center; gap: 5px; margin-top: 3px; flex-wrap: wrap; }
 .r-stars { color: var(--amber); font-size: 11px; }
 .r-address { font-size: 11px; color: #b0a090; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.r-card-safe { border-color: #C0DD97; }
+.safe-badge { font-size: 10px; padding: 3px 8px; border-radius: 20px; background: #EAF3DE; color: #27500A; border: 0.5px solid #C0DD97; white-space: nowrap; flex-shrink: 0; align-self: flex-start; }
+
+.r-details { padding: 0 14px 10px; display: flex; flex-direction: column; gap: 5px; border-bottom: 0.5px solid #f0ebe3; }
+.r-detail-row { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #6b5a42; }
+.r-detail-row i { font-size: 13px; color: #b0a090; flex-shrink: 0; }
+.r-detail-row a { color: #185FA5; text-decoration: none; }
+.r-detail-row a:hover { text-decoration: underline; }
+
+.r-safe-dishes { padding: 10px 14px; border-bottom: 0.5px solid #f0ebe3; display: flex; flex-direction: column; gap: 6px; }
+.r-safe-dishes-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #27500A; display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
+.r-dish-row { display: flex; flex-direction: column; gap: 1px; padding: 4px 8px; background: #EAF3DE; border-radius: 6px; }
+.r-dish-name { font-size: 12px; font-weight: 500; color: #1a3a0a; }
+.r-dish-note { font-size: 11px; color: #3B6D11; }
 .r-actions { padding: 0 14px 12px; display: flex; gap: 8px; }
 .r-save-btn { background: none; border: 0.5px solid #d0c8bc; border-radius: var(--radius); padding: 5px 12px; font-family: 'DM Sans', sans-serif; font-size: 11px; color: #6b5a42; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.15s; }
 .r-save-btn:hover { background: #fdf0e0; border-color: var(--amber); color: #854F0B; }
