@@ -101,60 +101,93 @@ BEST CUISINES: South Indian, Italian, Eastern European, Japanese`;
 }
 
 // ── Safe dish suggestions by cuisine ──
-const CUISINE_SAFE_DISHES = {
-  'south indian': [
-    { dish: 'Plain dosa', note: 'Ask: no onion or garlic in batter or filling' },
-    { dish: 'Masoor dal', note: 'Ask: prepared without onion or garlic' },
-    { dish: 'Idli with plain sambar', note: 'Ask: sambar without onion or garlic' },
-    { dish: 'Plain rice', note: 'Safe as-is' },
-  ],
-  'indian': [
-    { dish: 'Plain basmati rice', note: 'Safe as-is' },
-    { dish: 'Dal (split red lentils)', note: 'Ask: no onion or garlic' },
-    { dish: 'Paneer dishes', note: 'Ask: no onion or garlic, check rennet-free' },
-  ],
-  'italian': [
-    { dish: 'White pizza (bianca)', note: 'Ask: no garlic in the dough or topping' },
-    { dish: 'Pasta with passata', note: 'Ask: plain tomato sauce, no garlic or onion' },
-    { dish: 'Ricotta dishes', note: 'Ask: no garlic' },
-    { dish: 'Mozzarella (rennet-free)', note: 'Confirm rennet-free with kitchen' },
-  ],
-  'eastern european': [
-    { dish: 'Pierogi (potato & cheese)', note: 'Ask: farmer\'s cheese filling, no onion' },
-    { dish: 'Mashed potatoes', note: 'Ask: with milk only, no gravy or onion' },
-    { dish: 'Potato casserole', note: 'Ask: no onion or garlic' },
-  ],
-  'polish': [
-    { dish: 'Pierogi ruskie', note: 'Ask: potato & cheese filling, no onion topping' },
-    { dish: 'Potato pancakes', note: 'Ask: no onion' },
-  ],
-  'ukrainian': [
-    { dish: 'Varenyky (potato & cheese)', note: 'Ask: no onion in filling or topping' },
-  ],
-  'japanese': [
-    { dish: 'Steamed white rice', note: 'Safe as-is' },
-    { dish: 'Plain baked or steamed tofu', note: 'Ask: no garlic or onion in marinade' },
-    { dish: 'Miso soup', note: 'Ask: no onion, confirm vegetarian dashi' },
-    { dish: 'Edamame', note: 'Safe as-is' },
-  ],
-  'vegetarian': [
-    { dish: 'Check menu for rice, pasta, or egg dishes', note: 'Ask: no garlic or onion in preparation' },
-  ],
-  'vegan': [
-    { dish: 'Plain rice or tofu dishes', note: 'Ask: no garlic or onion' },
-  ],
-  'mediterranean': [
-    { dish: 'White rice dishes', note: 'Ask: no garlic or onion' },
-    { dish: 'Halloumi (check rennet-free)', note: 'Confirm vegetarian rennet' },
-  ],
-};
+const CUISINE_SAFE_DISHES = [
+  {
+    keywords: ['south indian', 'dosa', 'idli', 'udupi'],
+    dishes: [
+      { dish: 'Plain dosa', note: 'Ask: no onion or garlic in batter or filling' },
+      { dish: 'Masoor dal (split red lentils)', note: 'Ask: prepared without onion or garlic' },
+      { dish: 'Idli with plain sambar', note: 'Ask: sambar without onion or garlic' },
+      { dish: 'Steamed white rice', note: 'Safe as-is' },
+    ]
+  },
+  {
+    keywords: ['indian', 'curry', 'tandoor', 'punjabi', 'bengali'],
+    dishes: [
+      { dish: 'Plain basmati rice', note: 'Safe as-is' },
+      { dish: 'Dal (split red lentils)', note: 'Ask: no onion or garlic' },
+      { dish: 'Paneer dishes', note: 'Ask: no onion or garlic, confirm rennet-free cheese' },
+      { dish: 'Plain naan or roti', note: 'Ask: no seeds, no garlic butter' },
+    ]
+  },
+  {
+    keywords: ['italian', 'pizza', 'pasta', 'trattoria', 'osteria', 'pizzeria', 'ristorante'],
+    dishes: [
+      { dish: 'White pizza (pizza bianca)', note: 'Ask: no garlic in dough or topping' },
+      { dish: 'Pasta with passata', note: 'Ask: plain strained tomato sauce, no garlic or onion' },
+      { dish: 'Ricotta dishes', note: 'Ask: no garlic' },
+      { dish: 'Mozzarella (rennet-free)', note: 'Confirm rennet-free with kitchen' },
+      { dish: 'Parmesan — only if labelled vegetarian', note: 'Ask staff to confirm no animal rennet' },
+    ]
+  },
+  {
+    keywords: ['eastern european', 'polish', 'ukrainian', 'pierogi', 'polish', 'slavic'],
+    dishes: [
+      { dish: 'Pierogi (potato & farmer\'s cheese)', note: 'Ask: no onion in filling or topping' },
+      { dish: 'Mashed potatoes', note: 'Ask: with milk only, no gravy or onion' },
+      { dish: 'Potato casserole', note: 'Ask: no onion or garlic' },
+    ]
+  },
+  {
+    keywords: ['japanese', 'sushi', 'ramen', 'izakaya', 'tempura'],
+    dishes: [
+      { dish: 'Steamed white rice', note: 'Safe as-is' },
+      { dish: 'Plain baked or steamed tofu', note: 'Ask: no garlic or onion in marinade' },
+      { dish: 'Edamame', note: 'Safe as-is' },
+      { dish: 'Miso soup', note: 'Ask: no onion, confirm vegetarian dashi' },
+    ]
+  },
+  {
+    keywords: ['mediterranean', 'greek', 'levantine', 'middle eastern'],
+    dishes: [
+      { dish: 'White rice dishes', note: 'Ask: no garlic or onion' },
+      { dish: 'Halloumi', note: 'Confirm vegetarian rennet with kitchen' },
+      { dish: 'Plain flatbread (no seeds)', note: 'Ask: no sesame seeds' },
+    ]
+  },
+  {
+    keywords: ['vegetarian', 'vegan', 'plant-based'],
+    dishes: [
+      { dish: 'Rice or pasta dishes', note: 'Ask: no garlic or onion in preparation' },
+      { dish: 'Tofu dishes', note: 'Ask: plain preparation, no garlic or onion' },
+      { dish: 'Egg dishes', note: 'Fine as part of a dish' },
+    ]
+  },
+  {
+    keywords: ['american', 'diner', 'cafe', 'grill', 'bistro', 'restaurant', 'bar', 'pub', 'tavern', 'kitchen', 'eatery', 'food'],
+    dishes: [
+      { dish: 'Mashed potatoes', note: 'Ask: with milk only, no gravy, no onion or garlic' },
+      { dish: 'Scrambled or fried eggs', note: 'Ask: no onion or garlic' },
+      { dish: 'White rice (if available)', note: 'Ask: plain, no seasoning with garlic or onion' },
+      { dish: 'Plain cheese pizza (if available)', note: 'Ask: rennet-free mozzarella, no garlic' },
+    ]
+  },
+];
+
+// Always shown at the bottom of every card
+const UNIVERSAL_TIPS = [
+  { dish: 'Always ask', note: '"Can this be prepared without garlic or onion? I have a medical intolerance."' },
+  { dish: 'Cheese check', note: 'Ask: "Is the cheese made without animal rennet?" (mozzarella & ricotta usually safe)' },
+];
 
 function getSafeDishes(cuisine) {
   const c = (cuisine || '').toLowerCase();
-  for (const [key, dishes] of Object.entries(CUISINE_SAFE_DISHES)) {
-    if (c.includes(key)) return dishes;
+  for (const group of CUISINE_SAFE_DISHES) {
+    if (group.keywords.some(k => c.includes(k))) {
+      return [...group.dishes, ...UNIVERSAL_TIPS];
+    }
   }
-  return [];
+  return UNIVERSAL_TIPS;
 }
 
 // ── Restaurant search ──
