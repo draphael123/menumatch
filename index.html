@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
   <div class="app">
@@ -148,6 +148,11 @@
             <button class="loc-btn" onclick="useMyLocation()">
               <i class="ti ti-current-location" aria-hidden="true"></i> Near me
             </button>
+            <select class="radius-select" id="radiusSelect">
+              <option value="8">5 mi</option>
+              <option value="16" selected>10 mi</option>
+              <option value="40">25 mi</option>
+            </select>
             <button class="search-btn" onclick="runSearch()">Search</button>
           </div>
           <div class="cuisine-filter-row">
@@ -186,6 +191,20 @@
     </main>
   </div>
 
-  <script src="app.js?v=2"></script>
+  <!-- Call-ahead script modal -->
+  <div class="modal-backdrop" id="scriptModal" onclick="closeModal()" style="display:none">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title"><i class="ti ti-phone"></i> Call-ahead script</span>
+        <button class="modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-body" id="scriptText"></div>
+      <div class="modal-footer">
+        <button class="modal-copy-btn" onclick="copyScript()"><i class="ti ti-copy"></i> Copy script</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=3"></script>
 </body>
 </html>

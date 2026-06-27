@@ -297,13 +297,78 @@ function renderResults(restaurants) {
           ${safeDishes.map(d => `<div class="r-dish-row"><span class="r-dish-name">${d.dish}</span><span class="r-dish-note">${d.note}</span></div>`).join('')}
         </div>
 
+        ${r.aiDishes ? `<div class="r-ai-note">Suggestions based on cuisine type — always confirm with staff</div>` : ''}
+
         <div class="r-actions">
-          <button class="r-save-btn ${isSaved ? 'saved' : ''}" data-save-id="${eid}" onclick="saveRestaurant(window.__rmap['${eid}'])">
-            <i class="ti ti-${isSaved ? 'heart-filled' : 'heart'}" aria-hidden="true"></i> ${isSaved ? 'Saved' : 'Save place'}
-          </button>
+          <div class="r-card-btns">
+            <button class="r-save-btn ${isSaved ? 'saved' : ''}" data-save-id="${eid}" onclick="saveRestaurant(window.__rmap['${eid}'])">
+              <i class="ti ti-${isSaved ? 'heart-filled' : 'heart'}" aria-hidden="true"></i> ${isSaved ? 'Saved' : 'Save'}
+            </button>
+            <button class="r-action-btn" onclick="showCallScript('${eid}')">
+              <i class="ti ti-phone" aria-hidden="true"></i> Call script
+            </button>
+            <button class="r-action-btn" id="share-${eid}" onclick="shareRestaurant('${eid}', this)">
+              <i class="ti ti-share" aria-hidden="true"></i> Share
+            </button>
+          </div>
         </div>
       </div>`;
     }).join('');
+}
+
+// ── Call-ahead script ──
+function showCallScript(eid) {
+  const r = window.__rmap[eid];
+  if (!r) return;
+  const dishes = (r.aiDishes || []).slice(0, 3).map(d => `  • ${d.dish}`).join('\n');
+  const script = `Hi, I have a question about dietary accommodations before we visit ${r.name}.
+
+My guest is vegetarian and has a medical intolerance to garlic and onion — even small amounts cause problems, so we need dishes prepared completely without them.
+
+She also needs cheese made without animal rennet. Mozzarella and ricotta are usually fine, but we'd need to confirm for anything else like parmesan or cheddar.
+
+She cannot eat seeds or whole grains.
+${dishes ? `\nBased on your menu, we were hoping to order:\n${dishes}\n\nWould the kitchen be able to prepare those without garlic or onion?` : '\nCould you tell us which dishes on your menu could be prepared without garlic or onion?'}
+
+Thank you so much — we really appreciate it.`;
+
+  document.getElementById('scriptText').textContent = script;
+  document.getElementById('scriptModal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('scriptModal').style.display = 'none';
+}
+
+function copyScript() {
+  const text = document.getElementById('scriptText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.modal-copy-btn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="ti ti-check"></i> Copied!';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  });
+}
+
+// ── Share restaurant ──
+function shareRestaurant(eid, btn) {
+  const r = window.__rmap[eid];
+  if (!r) return;
+  const dishes = (r.aiDishes || []).slice(0, 4).map(d => `  • ${d.dish} — ${d.note}`).join('\n');
+  const text = `${r.name}
+${r.address}${r.phone ? '\n' + r.phone : ''}${r.mapsUrl ? '\n' + r.mapsUrl : ''}
+
+Likely safe to order:
+${dishes || '  • Ask about plain dishes without garlic or onion'}
+
+Tell them: vegetarian, no garlic/onion (medical intolerance), rennet-free cheese only, no seeds or whole grains.`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="ti ti-check"></i> Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied'); }, 2000);
+  });
 }
 
 function useMyLocation() {
@@ -323,12 +388,14 @@ function useMyLocation() {
 async function runSearch() {
   const loc = document.getElementById('locationInput').value.trim();
   if (!loc) return;
+  const radiusKm = document.getElementById('radiusSelect')?.value || '16';
+  if (loc !== 'Current location') localStorage.setItem('mm_last_location', loc);
   const area = document.getElementById('resultsArea');
   area.innerHTML = `<div class="empty-state"><i class="ti ti-loader empty-icon spinning" aria-hidden="true"></i><div class="empty-title">Searching…</div></div>`;
   try {
     const params = currentCoords && loc === 'Current location'
-      ? `lat=${currentCoords.lat}&lng=${currentCoords.lng}`
-      : `location=${encodeURIComponent(loc)}`;
+      ? `lat=${currentCoords.lat}&lng=${currentCoords.lng}&radius=${radiusKm}`
+      : `location=${encodeURIComponent(loc)}&radius=${radiusKm}`;
     const res = await fetch(`/api/search?${params}`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Search failed');
@@ -343,3 +410,6 @@ async function runSearch() {
 // ── Init ──
 savePlaces();
 renderSaved();
+// Restore last searched location
+const lastLoc = localStorage.getItem('mm_last_location');
+if (lastLoc) document.getElementById('locationInput').value = lastLoc;

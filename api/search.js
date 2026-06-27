@@ -4,7 +4,8 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { location, lat, lng } = req.query;
+  const { location, lat, lng, radius } = req.query;
+  const radiusMeters = Math.min(Math.max(parseInt(radius || '16') * 1000, 1000), 50000);
   const key = process.env.GOOGLE_PLACES_KEY;
 
   if (!key) return res.status(500).json({ error: 'API key not configured' });
@@ -22,7 +23,7 @@ export default async function handler(req, res) {
           includedTypes: ['restaurant', 'cafe', 'meal_takeaway'],
           maxResultCount: 20,
           locationRestriction: {
-            circle: { center: { latitude: coords.lat, longitude: coords.lng }, radius: 2000 }
+            circle: { center: { latitude: coords.lat, longitude: coords.lng }, radius: radiusMeters }
           }
         })
       });
@@ -47,7 +48,7 @@ export default async function handler(req, res) {
               body: JSON.stringify({
                 includedTypes: ['restaurant', 'cafe', 'meal_takeaway'],
                 maxResultCount: 20,
-                locationRestriction: { circle: { center: { latitude: coords.lat, longitude: coords.lng }, radius: 16000 } }
+                locationRestriction: { circle: { center: { latitude: coords.lat, longitude: coords.lng }, radius: radiusMeters } }
               })
             });
             const data = await placesRes.json();
