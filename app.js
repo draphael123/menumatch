@@ -281,9 +281,26 @@ function renderResults(restaurants) {
       const safeDishes = r.aiDishes || getSafeDishes(r.cuisine);
       const eid = r.id.replace(/"/g, '');
 
+      const photoId = `photo-${eid}`;
+      if (r.photoName) {
+        fetch(`/api/photo?name=${encodeURIComponent(r.photoName)}`)
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data?.url) {
+              const el = document.getElementById(photoId);
+              if (el) {
+                el.style.backgroundImage = `url(${data.url})`;
+                el.style.backgroundSize = 'cover';
+                el.style.backgroundPosition = 'center';
+                el.textContent = '';
+              }
+            }
+          }).catch(() => {});
+      }
+
       return `<div class="r-card${safe ? ' r-card-safe' : ''}">
         <div class="r-card-header">
-          <div class="r-icon">${cuisineIcon(r.cuisine)}</div>
+          <div class="r-icon" id="${photoId}">${cuisineIcon(r.cuisine)}</div>
           <div class="r-meta">
             <div class="r-name">${r.name}</div>
             <div class="r-sub">

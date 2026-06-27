@@ -1,4 +1,4 @@
-const FIELD_MASK = 'places.id,places.displayName,places.primaryTypeDisplayName,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.nationalPhoneNumber,places.googleMapsUri';
+const FIELD_MASK = 'places.id,places.displayName,places.primaryTypeDisplayName,places.types,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.nationalPhoneNumber,places.googleMapsUri,places.photos';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -134,16 +134,59 @@ ${list}`;
   }
 }
 
+// Maps Google place type strings to readable food labels
+function cuisineLabel(primaryType, types = []) {
+  const all = [primaryType, ...types].map(t => (t || '').toLowerCase().replace(/_/g, ' '));
+  const checks = [
+    [['pizza'], 'Pizza'],
+    [['sushi'], 'Sushi'],
+    [['ramen'], 'Ramen'],
+    [['japanese'], 'Japanese'],
+    [['south indian', 'dosa', 'idli'], 'South Indian'],
+    [['indian'], 'Indian'],
+    [['italian'], 'Italian'],
+    [['chinese'], 'Chinese'],
+    [['mexican', 'taco', 'burrito'], 'Mexican'],
+    [['thai'], 'Thai'],
+    [['vietnamese'], 'Vietnamese'],
+    [['korean'], 'Korean'],
+    [['mediterranean'], 'Mediterranean'],
+    [['greek'], 'Greek'],
+    [['middle eastern', 'lebanese', 'falafel'], 'Middle Eastern'],
+    [['polish', 'ukrainian', 'eastern european', 'pierogi'], 'Eastern European'],
+    [['vegetarian', 'vegan', 'plant based'], 'Vegetarian'],
+    [['seafood', 'fish'], 'Seafood'],
+    [['steakhouse', 'steak'], 'Steakhouse'],
+    [['burger', 'hamburger'], 'Burgers'],
+    [['sandwich', 'deli', 'sub'], 'Deli / Sandwiches'],
+    [['breakfast', 'brunch'], 'Breakfast & Brunch'],
+    [['bakery', 'pastry'], 'Bakery'],
+    [['coffee', 'cafe', 'espresso'], 'Café'],
+    [['ice cream', 'dessert'], 'Desserts'],
+    [['brewery', 'brew pub', 'brewpub'], 'Brewery'],
+    [['bar', 'pub', 'tavern'], 'Bar & Pub'],
+    [['farm', 'farm to table'], 'Farm-to-Table'],
+    [['american'], 'American'],
+    [['diner'], 'Diner'],
+    [['restaurant', 'meal takeaway', 'meal delivery', 'food'], 'Restaurant'],
+  ];
+  for (const [keywords, label] of checks) {
+    if (all.some(a => keywords.some(k => a.includes(k)))) return label;
+  }
+  return primaryType || 'Restaurant';
+}
+
 function mapPlaces(places = []) {
   return places.map(p => ({
     id: p.id,
     name: p.displayName?.text || 'Unknown',
-    cuisine: p.primaryTypeDisplayName?.text || 'Restaurant',
+    cuisine: cuisineLabel(p.primaryTypeDisplayName?.text, p.types),
     rating: p.rating || null,
     ratingCount: p.userRatingCount || 0,
     address: p.formattedAddress || '',
     phone: p.nationalPhoneNumber || null,
     mapsUrl: p.googleMapsUri || null,
-    location: p.location
+    location: p.location,
+    photoName: p.photos?.[0]?.name || null,
   }));
 }
