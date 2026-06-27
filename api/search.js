@@ -1,4 +1,4 @@
-const FIELD_MASK = 'places.id,places.displayName,places.primaryTypeDisplayName,places.types,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.nationalPhoneNumber,places.googleMapsUri,places.photos';
+const FIELD_MASK = 'places.id,places.displayName,places.primaryTypeDisplayName,places.types,places.rating,places.userRatingCount,places.formattedAddress,places.location,places.nationalPhoneNumber,places.googleMapsUri,places.photos.name';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
