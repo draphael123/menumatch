@@ -86,7 +86,9 @@ async function enrichWithSuggestions(restaurants) {
   if (!claudeKey || !restaurants.length) return restaurants;
 
   try {
-    const list = restaurants.map(r => `${r.id}|||${r.name}|||${r.cuisine}`).join('\n');
+    // Cap at 10 to stay within Vercel's 10s function timeout
+    const toEnrich = restaurants.slice(0, 10);
+    const list = toEnrich.map(r => `${r.id}|||${r.name}|||${r.cuisine}`).join('\n');
     const prompt = `${DIET_CONTEXT}
 
 For each restaurant below, suggest 2–4 specific menu items that are LIKELY to appear on their menu AND would be safe for this diner. Be specific to what that restaurant type actually serves — don't suggest "mashed potatoes" at a sushi restaurant. If nothing is clearly safe, say so briefly.
@@ -123,9 +125,9 @@ ${list}`;
     const { suggestions } = JSON.parse(jsonMatch[0]);
     const byId = Object.fromEntries(suggestions.map(s => [s.id, s.dishes]));
 
-    return restaurants.map(r => ({
+    return restaurants.map((r, i) => ({
       ...r,
-      aiDishes: byId[r.id] || null
+      aiDishes: i < 10 ? (byId[r.id] || null) : null
     }));
   } catch {
     return restaurants;
