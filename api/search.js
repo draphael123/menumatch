@@ -31,26 +31,28 @@ export default async function handler(req, res) {
       return res.json({ restaurants: mapPlaces(data.places), coords });
 
     } else {
-      // For US zip codes, geocode first to get precise coordinates, then use nearbySearch
+      // For US zip codes, resolve to lat/lng via free public API (no key needed), then nearbySearch
       const isZip = /^\d{5}$/.test(location.trim());
       if (isZip) {
-        const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?components=postal_code:${encodeURIComponent(location.trim())}%7Ccountry:US&key=${key}`);
-        const geoData = await geoRes.json();
-        if (geoData.status === 'OK' && geoData.results[0]?.geometry?.location) {
-          const loc = geoData.results[0].geometry.location;
-          coords = { lat: loc.lat, lng: loc.lng };
-          const placesRes = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': FIELD_MASK },
-            body: JSON.stringify({
-              includedTypes: ['restaurant', 'cafe', 'meal_takeaway'],
-              maxResultCount: 20,
-              locationRestriction: { circle: { center: { latitude: coords.lat, longitude: coords.lng }, radius: 8000 } }
-            })
-          });
-          const data = await placesRes.json();
-          if (!placesRes.ok) return res.status(500).json({ error: data.error?.message || 'Places API error' });
-          return res.json({ restaurants: mapPlaces(data.places), coords });
+        const zipRes = await fetch(`https://api.zippopotam.us/us/${location.trim()}`);
+        if (zipRes.ok) {
+          const zipData = await zipRes.json();
+          const place = zipData.places?.[0];
+          if (place) {
+            coords = { lat: parseFloat(place.latitude), lng: parseFloat(place.longitude) };
+            const placesRes = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': FIELD_MASK },
+              body: JSON.stringify({
+                includedTypes: ['restaurant', 'cafe', 'meal_takeaway'],
+                maxResultCount: 20,
+                locationRestriction: { circle: { center: { latitude: coords.lat, longitude: coords.lng }, radius: 16000 } }
+              })
+            });
+            const data = await placesRes.json();
+            if (!placesRes.ok) return res.status(500).json({ error: data.error?.message || 'Places API error' });
+            return res.json({ restaurants: mapPlaces(data.places), coords });
+          }
         }
       }
 
