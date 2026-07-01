@@ -122,6 +122,26 @@ const DEFAULT_RESTRICTIONS = [
   { id: 'grains', label: 'Whole grains or bran', active: true },
 ];
 
+// The foods this diner CAN eat — drives dish matching. Each has an optional
+// "note" telling the kitchen what to confirm. Fully editable per user.
+const DEFAULT_SAFE_FOODS = [
+  { id: 'sf_mozz', label: 'Mozzarella (rennet-free)', note: 'confirm cheese is rennet-free', active: true },
+  { id: 'sf_ricotta', label: 'Ricotta', note: '', active: true },
+  { id: 'sf_farmer', label: "Farmer's cheese", note: '', active: true },
+  { id: 'sf_whitepizza', label: 'White pizza', note: 'no garlic in dough or topping', active: true },
+  { id: 'sf_passata', label: 'Pasta with passata', note: 'plain strained tomato, no garlic or onion', active: true },
+  { id: 'sf_pierogi', label: 'Pierogi (potato & cheese)', note: 'no onion in filling or topping', active: true },
+  { id: 'sf_dosa', label: 'Plain dosa', note: 'no garlic/onion in batter or chutney', active: true },
+  { id: 'sf_dal', label: 'Masoor dal (red lentils)', note: 'no onion or garlic', active: true },
+  { id: 'sf_mash', label: 'Mashed potatoes', note: 'milk only, no gravy, no onion/garlic', active: true },
+  { id: 'sf_potcass', label: 'Potato casserole', note: 'no onion or garlic', active: true },
+  { id: 'sf_tofu', label: 'Plain baked or steamed tofu', note: 'no garlic/onion marinade', active: true },
+  { id: 'sf_eggs', label: 'Eggs (as part of a dish)', note: 'no onion or garlic', active: true },
+  { id: 'sf_rice', label: 'Plain white rice', note: '', active: true },
+  { id: 'sf_pasta', label: 'White flour pasta', note: '', active: true },
+  { id: 'sf_sourdough', label: 'Sourdough bread', note: 'no seeds', active: true },
+];
+
 let dietProfile = null;
 let cardEditMode = false;
 
@@ -131,7 +151,15 @@ function loadProfile() {
     try { dietProfile = JSON.parse(stored); } catch { dietProfile = null; }
   }
   if (!dietProfile) {
-    dietProfile = { restrictions: DEFAULT_RESTRICTIONS.map(r => ({ ...r })) };
+    dietProfile = {
+      restrictions: DEFAULT_RESTRICTIONS.map(r => ({ ...r })),
+      safeFoods: DEFAULT_SAFE_FOODS.map(r => ({ ...r })),
+    };
+    saveProfile();
+  }
+  // Migration: profiles saved before safe-foods editing existed
+  if (!Array.isArray(dietProfile.safeFoods)) {
+    dietProfile.safeFoods = DEFAULT_SAFE_FOODS.map(r => ({ ...r }));
     saveProfile();
   }
 }
@@ -169,6 +197,47 @@ function removeCustomRestriction(id) {
   updateSidebarNote();
 }
 
+// ── Safe foods (things this diner CAN eat) ──
+function getActiveSafeFoods() {
+  return (dietProfile.safeFoods || []).filter(f => f.active);
+}
+
+function toggleSafeFood(id) {
+  const f = dietProfile.safeFoods.find(f => f.id === id);
+  if (f) { f.active = !f.active; saveProfile(); renderDietCard(); }
+}
+
+function addSafeFood() {
+  const input = document.getElementById('newSafeFoodInput');
+  if (!input) return;
+  const label = input.value.trim();
+  if (!label) return;
+  dietProfile.safeFoods.push({ id: 'sf_custom_' + Date.now(), label, note: '', active: true, custom: true });
+  saveProfile();
+  input.value = '';
+  renderDietCard();
+}
+
+function removeSafeFood(id) {
+  dietProfile.safeFoods = dietProfile.safeFoods.filter(f => f.id !== id);
+  saveProfile();
+  renderDietCard();
+}
+
+// A plain-language "ask the kitchen" line built from the active restrictions
+function askKitchenLine() {
+  const active = getActiveRestrictions().map(r => r.label.toLowerCase());
+  if (!active.length) return 'Can you tell me how this dish is prepared? I have some dietary needs.';
+  return `Can this dish be prepared without ${listPhrase(active)}? I have a medical dietary need.`;
+}
+
+// Joins ["a","b","c"] -> "a, b, or c"
+function listPhrase(items) {
+  if (items.length <= 1) return items[0] || '';
+  if (items.length === 2) return `${items[0]} or ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, or ${items[items.length - 1]}`;
+}
+
 function toggleEditMode() {
   cardEditMode = !cardEditMode;
   renderDietCard();
@@ -182,7 +251,7 @@ function updateSidebarNote() {
     el.innerHTML = '<i class="ti ti-leaf" aria-hidden="true"></i> No active dietary restrictions.';
     return;
   }
-  el.innerHTML = `<i class="ti ti-leaf" aria-hidden="true"></i> Profile: vegetarian, ${active.map(r => r.label.toLowerCase()).join(', ')}.`;
+  el.innerHTML = `<i class="ti ti-leaf" aria-hidden="true"></i> Can't eat: ${active.map(r => r.label.toLowerCase()).join(', ')}.`;
 }
 
 function renderDietCard() {
@@ -191,6 +260,9 @@ function renderDietCard() {
 
   const active = dietProfile.restrictions.filter(r => r.active);
   const inactive = dietProfile.restrictions.filter(r => !r.active);
+  const safeActive = (dietProfile.safeFoods || []).filter(f => f.active);
+  const safeInactive = (dietProfile.safeFoods || []).filter(f => !f.active);
+  const askLine = askKitchenLine();
 
   if (cardEditMode) {
     container.innerHTML = `
@@ -206,6 +278,35 @@ function renderDietCard() {
             </button>
           </div>
         </div>
+
+        <div class="diet-section">
+          <div class="diet-section-label safe">
+            <i class="ti ti-circle-check" aria-hidden="true"></i> I can safely eat
+            <span style="margin-left:6px;font-size:9px;opacity:0.7;font-weight:400;letter-spacing:0">(click to disable)</span>
+          </div>
+          <div class="diet-items">
+            ${safeActive.map(f => `
+              <span class="diet-item safe diet-item-editable" onclick="toggleSafeFood('${f.id}')" title="${f.note ? f.note.replace(/"/g, '&quot;') : 'Click to disable'}">
+                ${f.label}<span class="diet-item-remove" onclick="event.stopPropagation();removeSafeFood('${f.id}')" title="Remove">×</span>
+              </span>`).join('')}
+            ${!safeActive.length ? '<span style="font-size:12px;color:#9CA3AF">No safe foods yet — add what you can eat below</span>' : ''}
+          </div>
+          ${safeInactive.length ? `
+          <div style="margin-top:10px">
+            <div style="font-size:10px;color:#9CA3AF;margin-bottom:6px">Disabled — click to re-enable:</div>
+            <div class="diet-items">
+              ${safeInactive.map(f => `
+                <span class="diet-item diet-item-inactive" onclick="toggleSafeFood('${f.id}')" title="Click to re-enable">
+                  + ${f.label}<span class="diet-item-remove" onclick="event.stopPropagation();removeSafeFood('${f.id}')" title="Remove">×</span>
+                </span>`).join('')}
+            </div>
+          </div>` : ''}
+          <div class="diet-add-row">
+            <input class="diet-add-input" id="newSafeFoodInput" type="text" placeholder="Add a food you can eat..." onkeydown="if(event.key==='Enter')addSafeFood()">
+            <button class="diet-add-btn" onclick="addSafeFood()"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
+          </div>
+        </div>
+
         <div class="diet-section">
           <div class="diet-section-label avoid">
             <i class="ti ti-circle-x" aria-hidden="true"></i> I cannot eat
@@ -252,42 +353,9 @@ function renderDietCard() {
           <div class="diet-section-label safe">
             <i class="ti ti-circle-check" aria-hidden="true"></i> I can safely eat — suggest one of these
           </div>
-          <div class="safe-grid">
-            <div class="safe-category">
-              <div class="safe-cat-label">Cheese</div>
-              <ul>
-                <li>Mozzarella (rennet-free)</li>
-                <li>Ricotta</li>
-                <li>Farmer's cheese</li>
-                <li>Some cheddar or Swiss</li>
-                <li>Parmesan — only if labelled vegetarian</li>
-              </ul>
-            </div>
-            <div class="safe-category">
-              <div class="safe-cat-label">Dishes</div>
-              <ul>
-                <li>White pizza (no garlic)</li>
-                <li>Pasta with passata sauce</li>
-                <li>Pierogi — potato &amp; cheese</li>
-                <li>Plain dosa (South Indian)</li>
-                <li>Masoor dal — without onion/garlic</li>
-                <li>Mashed potatoes (with milk, no gravy)</li>
-                <li>Potato casserole</li>
-                <li>Baked plain tofu</li>
-                <li>Eggs (as part of a dish)</li>
-              </ul>
-            </div>
-            <div class="safe-category">
-              <div class="safe-cat-label">Staples</div>
-              <ul>
-                <li>White rice</li>
-                <li>White flour pasta</li>
-                <li>Sourdough bread (no seeds)</li>
-                <li>Passata (strained tomato)</li>
-                <li>Milk</li>
-                <li>Plain tofu</li>
-              </ul>
-            </div>
+          <div class="diet-items">
+            ${safeActive.map(f => `<span class="diet-item safe"${f.note ? ` title="${f.note.replace(/"/g, '&quot;')}"` : ''}>${f.label}${f.note ? ` <span style="opacity:0.7;font-weight:400">— ${f.note}</span>` : ''}</span>`).join('')}
+            ${!safeActive.length ? '<span style="font-size:12px;color:#9CA3AF">No safe foods added yet — tap Edit to add what you can eat</span>' : ''}
           </div>
         </div>
 
@@ -306,19 +374,7 @@ function renderDietCard() {
             <i class="ti ti-help-circle" aria-hidden="true"></i> Please ask the kitchen
           </div>
           <div class="ask-box">
-            "Can this dish be prepared <strong>without garlic or onion</strong>? I have a medical intolerance."
-          </div>
-        </div>
-
-        <div class="diet-section">
-          <div class="diet-section-label info">
-            <i class="ti ti-info-circle" aria-hidden="true"></i> Best cuisine types
-          </div>
-          <div class="cuisine-tags">
-            <span class="cuisine-tag">South Indian</span>
-            <span class="cuisine-tag">Italian</span>
-            <span class="cuisine-tag">Eastern European</span>
-            <span class="cuisine-tag">Japanese (plain tofu/rice)</span>
+            "${askLine}"
           </div>
         </div>
       </div>`;
@@ -330,20 +386,17 @@ function printCard() { window.print(); }
 
 function copyCard() {
   const active = getActiveRestrictions();
+  const safe = getActiveSafeFoods();
   const text = `MY DIETARY NEEDS — Please read before taking my order
 
 I CANNOT EAT:
-${active.map(r => `• ${r.label}`).join('\n')}
+${active.length ? active.map(r => `• ${r.label}`).join('\n') : '• (none listed)'}
 
 PLEASE ASK THE KITCHEN:
-"Can this dish be prepared without garlic or onion? I have a medical intolerance."
+"${askKitchenLine()}"
 
 I CAN SAFELY EAT:
-Cheese: Mozzarella (rennet-free), Ricotta, Farmer's cheese, some Cheddar or Swiss, Parmesan only if labelled vegetarian
-Dishes: White pizza (no garlic), Pasta with passata sauce, Pierogi (potato & cheese), Plain dosa, Masoor dal without onion/garlic, Mashed potatoes with milk (no gravy), Potato casserole, Plain baked tofu, Eggs as part of a dish
-Staples: White rice, White flour pasta, Sourdough bread (no seeds), Passata, Milk
-
-BEST CUISINES: South Indian, Italian, Eastern European, Japanese`;
+${safe.length ? safe.map(f => `• ${f.label}${f.note ? ` (${f.note})` : ''}`).join('\n') : '• (none listed yet)'}`;
 
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.querySelector('[onclick="copyCard()"]');
@@ -353,94 +406,18 @@ BEST CUISINES: South Indian, Italian, Eastern European, Japanese`;
   });
 }
 
-// ── Safe dish suggestions by cuisine ──
-const CUISINE_SAFE_DISHES = [
-  {
-    keywords: ['south indian', 'dosa', 'idli', 'udupi'],
-    dishes: [
-      { dish: 'Plain dosa', note: 'Ask: no onion or garlic in batter or filling' },
-      { dish: 'Masoor dal (split red lentils)', note: 'Ask: prepared without onion or garlic' },
-      { dish: 'Idli with plain sambar', note: 'Ask: sambar without onion or garlic' },
-      { dish: 'Steamed white rice', note: 'Safe as-is' },
-    ]
-  },
-  {
-    keywords: ['indian', 'curry', 'tandoor', 'punjabi', 'bengali'],
-    dishes: [
-      { dish: 'Plain basmati rice', note: 'Safe as-is' },
-      { dish: 'Dal (split red lentils)', note: 'Ask: no onion or garlic' },
-      { dish: 'Paneer dishes', note: 'Ask: no onion or garlic, confirm rennet-free cheese' },
-      { dish: 'Plain naan or roti', note: 'Ask: no seeds, no garlic butter' },
-    ]
-  },
-  {
-    keywords: ['italian', 'pizza', 'pasta', 'trattoria', 'osteria', 'pizzeria', 'ristorante'],
-    dishes: [
-      { dish: 'White pizza (pizza bianca)', note: 'Ask: no garlic in dough or topping' },
-      { dish: 'Pasta with passata', note: 'Ask: plain strained tomato sauce, no garlic or onion' },
-      { dish: 'Ricotta dishes', note: 'Ask: no garlic' },
-      { dish: 'Mozzarella (rennet-free)', note: 'Confirm rennet-free with kitchen' },
-      { dish: 'Parmesan — only if labelled vegetarian', note: 'Ask staff to confirm no animal rennet' },
-    ]
-  },
-  {
-    keywords: ['eastern european', 'polish', 'ukrainian', 'pierogi', 'polish', 'slavic'],
-    dishes: [
-      { dish: 'Pierogi (potato & farmer\'s cheese)', note: 'Ask: no onion in filling or topping' },
-      { dish: 'Mashed potatoes', note: 'Ask: with milk only, no gravy or onion' },
-      { dish: 'Potato casserole', note: 'Ask: no onion or garlic' },
-    ]
-  },
-  {
-    keywords: ['japanese', 'sushi', 'ramen', 'izakaya', 'tempura'],
-    dishes: [
-      { dish: 'Steamed white rice', note: 'Ask: plain, no seasoning with garlic or onion' },
-      { dish: 'Plain baked or steamed tofu', note: 'Ask: no garlic or onion in marinade or sauce' },
-    ]
-  },
-  {
-    keywords: ['mediterranean', 'greek', 'levantine', 'middle eastern'],
-    dishes: [
-      { dish: 'White rice dishes', note: 'Ask: no garlic or onion' },
-      { dish: 'Halloumi', note: 'Confirm vegetarian rennet with kitchen' },
-      { dish: 'Plain flatbread (no seeds)', note: 'Ask: no sesame seeds' },
-    ]
-  },
-  {
-    keywords: ['vegetarian', 'vegan', 'plant-based'],
-    dishes: [
-      { dish: 'Rice or pasta dishes', note: 'Ask: no garlic or onion in preparation' },
-      { dish: 'Tofu dishes', note: 'Ask: plain preparation, no garlic or onion' },
-      { dish: 'Egg dishes', note: 'Fine as part of a dish' },
-    ]
-  },
-  {
-    keywords: ['american', 'diner', 'cafe', 'coffee', 'grill', 'bistro', 'restaurant', 'bar', 'pub', 'tavern', 'kitchen', 'eatery', 'food', 'brewery', 'winery', 'farm', 'market', 'bakery', 'brasserie', 'steakhouse', 'seafood', 'brunch'],
-    dishes: [
-      { dish: 'Mashed potatoes', note: 'Ask: with milk only, no gravy, no onion or garlic' },
-      { dish: 'Scrambled or fried eggs', note: 'Ask: no onion or garlic' },
-      { dish: 'White rice (if available)', note: 'Ask: plain, no seasoning with garlic or onion' },
-      { dish: 'Plain cheese pizza (if available)', note: 'Ask: rennet-free mozzarella, no garlic' },
-    ]
-  },
-];
-
-// Always shown at the bottom of every card
-const UNIVERSAL_TIPS = [
-  { dish: 'Always ask', note: '"Can this be prepared without garlic or onion? I have a medical intolerance."' },
-  { dish: 'Cheese check', note: 'Ask: "Is the cheese made without animal rennet?" (mozzarella & ricotta usually safe)' },
-];
-
+// Client-side fallback for when the AI matcher is unavailable (e.g. no
+// Anthropic key). Instead of guessing cuisine-specific dishes, we surface the
+// user's OWN safe-food list so the suggestions always reflect their profile.
 function getSafeDishes(cuisine) {
-  const c = (cuisine || '').toLowerCase();
-  for (const group of CUISINE_SAFE_DISHES) {
-    if (group.keywords.some(k => c.includes(k))) {
-      return [...group.dishes, ...UNIVERSAL_TIPS];
-    }
+  const safe = getActiveSafeFoods();
+  if (safe.length) {
+    return safe.slice(0, 6).map(f => ({
+      dish: f.label,
+      note: f.note ? `Ask: ${f.note}` : 'Ask if this is available and how it\'s prepared',
+    }));
   }
-  // Generic fallback — always show actual dish suggestions, not just tips
-  const generic = CUISINE_SAFE_DISHES[CUISINE_SAFE_DISHES.length - 1];
-  return [...generic.dishes, ...UNIVERSAL_TIPS];
+  return [{ dish: 'Ask the kitchen', note: askKitchenLine() }];
 }
 
 // ── Restaurant search ──
@@ -684,14 +661,15 @@ function showCallScript(eid) {
   const active = getActiveRestrictions();
   const restrictionList = active.map(r => r.label.toLowerCase()).join(', ');
   const dishes = (r.aiDishes || []).slice(0, 3).map(d => `  • ${d.dish}`).join('\n');
-  const script = `Hi, I have a question about dietary accommodations before we visit ${r.name}.
+  const cannotLine = restrictionList
+    ? `I have dietary restrictions and cannot eat: ${restrictionList}.`
+    : `I have some dietary restrictions I'd like to check on.`;
+  const script = `Hi, I have a question about dietary accommodations before I visit ${r.name}.
 
-My guest has dietary restrictions and cannot eat: ${restrictionList}.
+${cannotLine}
+${dishes ? `\nBased on your menu, I was hoping to order:\n${dishes}\n\nWould the kitchen be able to prepare those without the ingredients I mentioned?` : '\nCould you tell me which dishes on your menu could be prepared without those ingredients?'}
 
-She also needs cheese made without animal rennet. Mozzarella and ricotta are usually fine, but we'd need to confirm for anything else like parmesan or cheddar.
-${dishes ? `\nBased on your menu, we were hoping to order:\n${dishes}\n\nWould the kitchen be able to prepare those without the ingredients I mentioned?` : '\nCould you tell us which dishes on your menu could be prepared without those ingredients?'}
-
-Thank you so much — we really appreciate it.`;
+Thank you so much — I really appreciate it.`;
 
   document.getElementById('scriptText').textContent = script;
   document.getElementById('scriptModal').style.display = 'flex';
@@ -721,9 +699,9 @@ function shareRestaurant(eid, btn) {
 ${r.address}${r.phone ? '\n' + r.phone : ''}${r.mapsUrl ? '\n' + r.mapsUrl : ''}
 
 Likely safe to order:
-${dishes || '  • Ask about plain dishes without garlic or onion'}
+${dishes || '  • Ask which dishes can be made to fit my diet'}
 
-Tell them: vegetarian, cannot eat ${active.map(r => r.label.toLowerCase()).join(', ')}.`;
+${active.length ? `Tell them: cannot eat ${active.map(r => r.label.toLowerCase()).join(', ')}.` : ''}`;
 
   navigator.clipboard.writeText(text).then(() => {
     const orig = btn.innerHTML;
@@ -756,10 +734,13 @@ async function runSearch() {
   area.innerHTML = `<div class="empty-state"><i class="ti ti-loader empty-icon spinning" aria-hidden="true"></i><div class="empty-title">Searching…</div></div>`;
   try {
     const activeRestrictions = getActiveRestrictions().map(r => r.label).join(',');
-    const restrictionsParam = `&restrictions=${encodeURIComponent(activeRestrictions)}`;
+    // Send the user's safe foods (label + kitchen note) so the matcher only
+    // suggests dishes this specific diner can actually eat.
+    const safeFoods = getActiveSafeFoods().map(f => f.note ? `${f.label} (${f.note})` : f.label).join('|');
+    const profileParam = `&restrictions=${encodeURIComponent(activeRestrictions)}&safe=${encodeURIComponent(safeFoods)}`;
     const params = currentCoords && loc === 'Current location'
-      ? `lat=${currentCoords.lat}&lng=${currentCoords.lng}&radius=${radiusKm}${restrictionsParam}`
-      : `location=${encodeURIComponent(loc)}&radius=${radiusKm}${restrictionsParam}`;
+      ? `lat=${currentCoords.lat}&lng=${currentCoords.lng}&radius=${radiusKm}${profileParam}`
+      : `location=${encodeURIComponent(loc)}&radius=${radiusKm}${profileParam}`;
     const res = await fetch(`/api/search?${params}`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Search failed');

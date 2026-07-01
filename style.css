@@ -258,6 +258,8 @@ html, body { height: 100%; font-family: 'DM Sans', system-ui, sans-serif; backgr
 .diet-items { display: flex; flex-wrap: wrap; gap: 6px; }
 .diet-item { font-size: 12px; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
 .diet-item.avoid { background: var(--red-bg); color: var(--red); border: 1px solid #FECACA; }
+.diet-item.safe { background: var(--green-bg); color: #15803d; border: 1px solid #86EFAC; }
+.diet-section-safe-prominent .diet-items { gap: 7px; }
 
 .ask-box {
   background: linear-gradient(135deg, #FFFBEB, #FEF3C7);

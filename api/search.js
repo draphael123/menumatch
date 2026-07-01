@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { location, lat, lng, radius, restrictions } = req.query;
+  const { location, lat, lng, radius, restrictions, safe } = req.query;
   const radiusMeters = Math.min(Math.max(parseInt(radius || '16') * 1000, 1000), 50000);
   const key = process.env.GOOGLE_PLACES_KEY;
 
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       const data = await placesRes.json();
       if (!placesRes.ok) return res.status(500).json({ error: data.error?.message || 'Places API error' });
       const restaurants = mapPlaces(data.places);
-      return res.json({ restaurants: await enrichWithSuggestions(restaurants, restrictions), coords });
+      return res.json({ restaurants: await enrichWithSuggestions(restaurants, restrictions, safe), coords });
 
     } else {
       // For US zip codes, resolve to lat/lng via free public API (no key needed), then nearbySearch
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
             const data = await placesRes.json();
             if (!placesRes.ok) return res.status(500).json({ error: data.error?.message || 'Places API error' });
             const rNearby = mapPlaces(data.places);
-            return res.json({ restaurants: await enrichWithSuggestions(rNearby, restrictions), coords });
+            return res.json({ restaurants: await enrichWithSuggestions(rNearby, restrictions, safe), coords });
           }
         }
       }
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
       if (restaurants.length && data.places[0]?.location) {
         coords = { lat: data.places[0].location.latitude, lng: data.places[0].location.longitude };
       }
-      return res.json({ restaurants: await enrichWithSuggestions(restaurants, restrictions), coords });
+      return res.json({ restaurants: await enrichWithSuggestions(restaurants, restrictions, safe), coords });
     }
 
   } catch (err) {
@@ -78,43 +78,40 @@ export default async function handler(req, res) {
   }
 }
 
-// The ONLY foods this diner can safely eat
-const SAFE_FOOD_LIST = `
-SAFE FOODS — the ONLY things this diner can eat:
-• White pizza (no garlic in dough or topping, rennet-free mozzarella)
-• Pasta with passata (plain strained tomato sauce only — no garlic, no onion)
-• Plain dosa (no garlic/onion in batter or chutney)
-• Idli (steamed rice cakes, no garlic/onion in sambar)
-• Masoor dal / split red lentil soup (no garlic or onion)
-• Pierogi with potato and farmer's cheese (no onion in filling or topping)
-• Mashed potatoes with milk (no gravy, no garlic, no onion)
-• Potato casserole (no garlic or onion)
-• Steamed plain white rice
-• Scrambled or fried eggs (no garlic or onion)
-• Plain baked or steamed tofu (no garlic/onion marinade)
-• Rennet-free mozzarella or ricotta dishes
+// Builds the SAFE FOODS / CANNOT EAT block from the user's own profile.
+// `safe` is a "|"-separated list of foods (each optionally "Label (kitchen note)")
+// and `restrictions` is a comma-separated list of things they can't eat.
+function buildProfileBlock(restrictions, safe) {
+  const safeItems = (safe || '')
+    .split('|').map(s => s.trim()).filter(Boolean);
+  const cannotItems = (restrictions || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
 
-ABSOLUTELY CANNOT EAT (incomplete list, but key items):
-• Garlic or onion (severe medical intolerance — includes powders, hidden in sauces)
-• Meat or fish
-• Seeds of any kind (sesame, sunflower, poppy, pumpkin, etc.)
-• Cheese made with animal rennet (cheddar, parmesan, most aged cheeses unless labelled vegetarian)
-• Gravy
-• Whole grains or bran
-• ALL vegetables (salad, cooked vegetables, vegetable dishes — these are NOT safe)
-• Sauces or condiments that may contain garlic or onion`;
+  const safeBlock = safeItems.length
+    ? `SAFE FOODS — the ONLY things this diner can eat:\n${safeItems.map(s => `• ${s}`).join('\n')}`
+    : `SAFE FOODS: The diner has not listed specific safe foods. Suggest plain, simple dishes that clearly avoid every item in the CANNOT EAT list, and tell them to confirm with the kitchen.`;
 
-async function enrichWithSuggestions(restaurants, restrictions) {
+  const cannotBlock = cannotItems.length
+    ? `\n\nABSOLUTELY CANNOT EAT (must be avoided):\n${cannotItems.map(s => `• ${s}`).join('\n')}`
+    : '';
+
+  return `${safeBlock}${cannotBlock}`;
+}
+
+async function enrichWithSuggestions(restaurants, restrictions, safe) {
   const claudeKey = process.env.ANTHROPIC_API_KEY;
   if (!claudeKey || !restaurants.length) return restaurants;
 
   try {
     const list = restaurants.map(r => `${r.id}|||${r.name}|||${r.cuisine}`).join('\n');
-    const prompt = `${SAFE_FOOD_LIST}
+    const hasSafeList = !!(safe && safe.trim());
+    const prompt = `${buildProfileBlock(restrictions, safe)}
 
-CRITICAL INSTRUCTION: You may ONLY suggest dishes from the SAFE FOODS list above. Do NOT suggest salads, vegetables, soups with vegetables, or any dish not explicitly listed as safe. If nothing from the safe list is likely on this restaurant's menu, respond with an empty dishes array for that restaurant.
+CRITICAL INSTRUCTION: ${hasSafeList
+      ? 'You may ONLY suggest dishes from the SAFE FOODS list above.'
+      : 'Only suggest plain dishes that clearly avoid every item in the CANNOT EAT list.'} Never suggest anything containing an item from the CANNOT EAT list. If nothing suitable is likely on this restaurant's menu, respond with an empty dishes array for that restaurant.
 
-For each restaurant below, look at the cuisine type and identify which items from the SAFE FOODS list (if any) are likely to appear on their menu. Suggest 1–3 matching items ONLY. Every suggestion must include a note telling the diner what to confirm with the kitchen.
+For each restaurant below, look at the cuisine type and identify which suitable items (if any) are likely to appear on their menu. Suggest 1–3 matching items ONLY. Every suggestion must include a note telling the diner what to confirm with the kitchen.
 
 Respond ONLY with valid JSON:
 {"suggestions":[{"id":"...","dishes":[{"dish":"...","note":"Call ahead to confirm: ..."}]}]}
