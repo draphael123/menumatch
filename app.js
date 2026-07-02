@@ -200,6 +200,14 @@ function mmApplyCloudData(data) {
   renderDietCard();
   updateSidebarNote();
   renderSaved();
+  // Signed in from the onboarding welcome and the account already has a
+  // diet card? Setup is done — close the wizard.
+  const ob = document.getElementById('onboarding');
+  if (ob && ob.style.display !== 'none' &&
+      (getActiveSafeFoods().length || getActiveRestrictions().length)) {
+    isFirstRun = false;
+    ob.style.display = 'none';
+  }
 }
 
 function getActiveRestrictions() {
@@ -516,7 +524,14 @@ function obRender() {
       <div class="ob-hero"><i class="ti ti-tools-kitchen-2" aria-hidden="true"></i></div>
       <div class="ob-title">Welcome to Menu<em>Match</em></div>
       <p class="ob-lead">Eating out with food issues is stressful. MenuMatch flips the script: tell us what you <strong>can</strong> eat, and we'll find restaurants — and specific dishes — that fit.</p>
-      <p class="ob-lead-sub">Setup takes about a minute. Everything can be changed later.</p>`;
+      <p class="ob-lead-sub">Setup takes about a minute. Everything can be changed later.</p>
+      ${window.mmCloudSignIn ? `
+      <div class="ob-signin-row">
+        <span>Already used MenuMatch?</span>
+        <button class="ob-signin-btn" data-ob-action="signin">
+          <i class="ti ti-brand-google" aria-hidden="true"></i> Sign in to restore your diet card
+        </button>
+      </div>` : ''}`;
     footer = `
       <button class="ob-skip" data-ob-action="skip">Skip for now</button>
       <button class="ob-next" data-ob-action="next">Let's set it up <i class="ti ti-arrow-right" aria-hidden="true"></i></button>`;
@@ -632,6 +647,7 @@ function obHandleClick(e) {
   if (action === 'next') { obState.step = Math.min(3, obState.step + 1); obRender(); }
   else if (action === 'back') { obState.step = Math.max(0, obState.step - 1); obRender(); }
   else if (action === 'skip') obSkip();
+  else if (action === 'signin') { if (window.mmCloudSignIn) window.mmCloudSignIn(); }
   else if (action === 'finish') obFinish();
   else if (action === 'addSafe') obAdd('safe');
   else if (action === 'addRestrict') obAdd('restrict');
