@@ -4,7 +4,9 @@
 // See FIREBASE_SETUP.md for how this project was configured.
 export const firebaseConfig = {
   apiKey: 'AIzaSyDlPlJzrJbTXuUoJ4ornue3GWVllnQvW0A',
-  authDomain: 'menumatch-b2ad4.firebaseapp.com',
+  // Same-origin auth: vercel.json proxies /__/* to the Firebase auth
+  // handler, so popups/redirects never depend on third-party storage.
+  authDomain: 'menumatch-beta.vercel.app',
   projectId: 'menumatch-b2ad4',
   storageBucket: 'menumatch-b2ad4.firebasestorage.app',
   messagingSenderId: '388477164591',

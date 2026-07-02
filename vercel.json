@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/__/:path*",
+      "destination": "https://menumatch-b2ad4.firebaseapp.com/__/:path*"
+    }
+  ]
+}
