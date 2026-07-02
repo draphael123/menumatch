@@ -6,7 +6,7 @@
 //   mmGetCloudSnapshot()      → { profile, savedPlaces } current local data
 //   mmApplyCloudData(data)    → replace local data + re-render (no push loop)
 //   window.mmCloudPush()      → set here; app.js calls it after local saves
-import { firebaseConfig } from './firebase-config.js?v=1';
+import { firebaseConfig } from './firebase-config.js?v=2';
 
 const configured =
   firebaseConfig?.apiKey && !String(firebaseConfig.apiKey).startsWith('PASTE_');
@@ -165,4 +165,10 @@ async function init() {
   });
 
   renderAccount();
+
+  // Let the onboarding wizard offer "Already used MenuMatch? Sign in" —
+  // returning users on a new device shouldn't have to redo setup first.
+  window.mmCloudSignIn = signIn;
+  const ob = document.getElementById('onboarding');
+  if (ob && ob.style.display !== 'none' && window.obRender) window.obRender();
 }

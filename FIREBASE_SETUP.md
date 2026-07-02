@@ -1,4 +1,10 @@
-# Firebase setup (one-time, ~10 minutes)
+# Firebase setup
+
+> **Status: DONE (2026-07-01).** Project `menumatch-b2ad4` is live with
+> Google sign-in enabled, `menumatch-beta.vercel.app` authorized, Firestore
+> created (nam5, production) with the rules below published, and the real
+> config committed in `firebase-config.js`. The steps below are kept as a
+> record / for recreating the project from scratch.
 
 MenuMatch works without any of this (local-only mode — the sign-in button
 stays hidden). Completing these steps turns on "Sign in with Google" and
