@@ -280,12 +280,18 @@ function toggleEditMode() {
 function updateSidebarNote() {
   const el = document.getElementById('sidebarNote');
   if (!el) return;
+  // Lead with what the user CAN eat — that's the whole idea of the tool.
+  const safe = getActiveSafeFoods();
   const active = getActiveRestrictions();
-  if (!active.length) {
-    el.innerHTML = '<i class="ti ti-leaf" aria-hidden="true"></i> No active dietary restrictions.';
-    return;
+  if (safe.length) {
+    const shown = safe.slice(0, 3).map(f => f.label.toLowerCase());
+    const more = safe.length - shown.length;
+    el.innerHTML = `<i class="ti ti-leaf" aria-hidden="true"></i> Eats: ${shown.join(', ')}${more > 0 ? ` +${more} more` : ''}.`;
+  } else if (active.length) {
+    el.innerHTML = `<i class="ti ti-leaf" aria-hidden="true"></i> Can't eat: ${active.map(r => r.label.toLowerCase()).join(', ')}.`;
+  } else {
+    el.innerHTML = '<i class="ti ti-leaf" aria-hidden="true"></i> No diet set up yet — open the Diet card and add what you eat.';
   }
-  el.innerHTML = `<i class="ti ti-leaf" aria-hidden="true"></i> Can't eat: ${active.map(r => r.label.toLowerCase()).join(', ')}.`;
 }
 
 function renderDietCard() {
@@ -428,14 +434,14 @@ function copyCard() {
   const safe = getActiveSafeFoods();
   const text = `MY DIETARY NEEDS — Please read before taking my order
 
-I CANNOT EAT:
-${active.length ? active.map(r => `• ${r.label}`).join('\n') : '• (none listed)'}
+I CAN SAFELY EAT — please suggest one of these:
+${safe.length ? safe.map(f => `• ${f.label}${f.note ? ` (${f.note})` : ''}`).join('\n') : '• (not listed yet — please ask me)'}
 
-PLEASE ASK THE KITCHEN:
-"${askKitchenLine()}"
+THE ONE RULE — nothing I order can contain:
+${active.length ? active.map(r => `• ${r.label}`).join('\n') : '• (no restrictions listed)'}
 
-I CAN SAFELY EAT:
-${safe.length ? safe.map(f => `• ${f.label}${f.note ? ` (${f.note})` : ''}`).join('\n') : '• (none listed yet)'}`;
+IF UNSURE, PLEASE ASK THE KITCHEN:
+"${askKitchenLine()}"`;
 
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.querySelector('[onclick="copyCard()"]');
@@ -876,15 +882,15 @@ function showCallScript(eid) {
   const r = window.__rmap[eid];
   if (!r) return;
   const active = getActiveRestrictions();
-  const restrictionList = active.map(r => r.label.toLowerCase()).join(', ');
-  const dishes = (r.aiDishes || []).slice(0, 3).map(d => `  • ${d.dish}`).join('\n');
-  const cannotLine = restrictionList
-    ? `I have dietary restrictions and cannot eat: ${restrictionList}.`
-    : `I have some dietary restrictions I'd like to check on.`;
-  const script = `Hi, I have a question about dietary accommodations before I visit ${r.name}.
-
-${cannotLine}
-${dishes ? `\nBased on your menu, I was hoping to order:\n${dishes}\n\nWould the kitchen be able to prepare those without the ingredients I mentioned?` : '\nCould you tell me which dishes on your menu could be prepared without those ingredients?'}
+  const restrictionList = active.map(x => x.label.toLowerCase()).join(', ');
+  // Lead with what the diner CAN eat: prefer dishes matched to this
+  // restaurant, fall back to the profile's own safe foods.
+  const fromAi = (r.aiDishes || []).slice(0, 3).map(d => `  • ${d.dish}`);
+  const fromProfile = getActiveSafeFoods().slice(0, 3).map(f => `  • ${f.label}`);
+  const hopes = fromAi.length ? fromAi : fromProfile;
+  const script = `Hi! I'm hoping to visit ${r.name}, and I wanted to check whether the kitchen could make something I can eat.
+${hopes.length ? `\nDishes like these usually work well for me:\n${hopes.join('\n')}\n` : ''}${restrictionList ? `\nThe one rule: nothing I order can contain ${restrictionList}.\n` : ''}
+Would the kitchen be able to prepare one of those — or suggest something else on your menu that fits?
 
 Thank you so much — I really appreciate it.`;
 
@@ -910,15 +916,17 @@ function copyScript() {
 function shareRestaurant(eid, btn) {
   const r = window.__rmap[eid];
   if (!r) return;
-  const dishes = (r.aiDishes || []).slice(0, 4).map(d => `  • ${d.dish} — ${d.note}`).join('\n');
+  const aiDishes = (r.aiDishes || []).slice(0, 4).map(d => `  • ${d.dish} — ${d.note}`).join('\n');
+  const profileDishes = getActiveSafeFoods().slice(0, 4).map(f => `  • ${f.label}${f.note ? ` — ${f.note}` : ''}`).join('\n');
+  const dishes = aiDishes || profileDishes;
   const active = getActiveRestrictions();
   const text = `${r.name}
 ${r.address}${r.phone ? '\n' + r.phone : ''}${r.mapsUrl ? '\n' + r.mapsUrl : ''}
 
-Likely safe to order:
+Things I can likely order here:
 ${dishes || '  • Ask which dishes can be made to fit my diet'}
 
-${active.length ? `Tell them: cannot eat ${active.map(r => r.label.toLowerCase()).join(', ')}.` : ''}`;
+${active.length ? `The one rule: nothing can contain ${active.map(r => r.label.toLowerCase()).join(', ')}.` : ''}`;
 
   navigator.clipboard.writeText(text).then(() => {
     const orig = btn.innerHTML;
