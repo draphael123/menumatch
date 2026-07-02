@@ -6,7 +6,7 @@
 //   mmGetCloudSnapshot()      → { profile, savedPlaces } current local data
 //   mmApplyCloudData(data)    → replace local data + re-render (no push loop)
 //   window.mmCloudPush()      → set here; app.js calls it after local saves
-import { firebaseConfig } from './firebase-config.js?v=2';
+import { firebaseConfig } from './firebase-config.js?v=3';
 
 const configured =
   firebaseConfig?.apiKey && !String(firebaseConfig.apiKey).startsWith('PASTE_');
