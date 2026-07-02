@@ -513,6 +513,20 @@ html, body { height: 100%; font-family: 'DM Sans', system-ui, sans-serif; backgr
   font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: #fff;
   cursor: pointer; display: flex; align-items: center; gap: 4px;
 }
+.ob-main-add { margin: 6px 0 8px; }
+.ob-main-add .ob-add-input { font-size: 14px; padding: 11px 14px; border-width: 2px; }
+.ob-main-add .ob-add-btn { padding: 11px 20px; font-size: 13.5px; background: linear-gradient(135deg, var(--coral), #e8462a); box-shadow: 0 2px 8px rgba(244,98,58,0.35); }
+.ob-hint { font-size: 11px; color: #9CA3AF; margin-bottom: 14px; }
+.ob-empty-list {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 26px 12px; margin-top: 6px;
+  border: 1.5px dashed #E5E7EB; border-radius: 12px;
+  font-size: 13px; color: #9CA3AF;
+}
+.ob-empty-list .ti { font-size: 18px; color: #D1D5DB; }
+.ob-chip-x { font-size: 13px; opacity: 0.6; margin-left: 2px; }
+.ob-chip:hover .ob-chip-x { opacity: 1; }
+
 .ob-signin-row {
   display: flex; flex-direction: column; align-items: center; gap: 7px;
   margin-top: 18px; padding-top: 16px; border-top: 1px solid #F3F4F6;
