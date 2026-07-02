@@ -9,12 +9,17 @@ function showTab(name) {
 // ── Saved places ──
 let savedPlaces = JSON.parse(localStorage.getItem('mm_saved') || '[]');
 
+// True while cloud data is being applied locally — suppresses the push hook
+// so a pull doesn't immediately echo back as a push.
+let cloudApplying = false;
+
 function savePlaces() {
   localStorage.setItem('mm_saved', JSON.stringify(savedPlaces));
   const count = savedPlaces.length;
   const badge = document.getElementById('savedCount');
   badge.textContent = count;
   badge.classList.toggle('visible', count > 0);
+  if (!cloudApplying && window.mmCloudPush) window.mmCloudPush();
 }
 
 function saveRestaurant(r) {
@@ -144,6 +149,7 @@ const DEFAULT_SAFE_FOODS = [
 
 let dietProfile = null;
 let cardEditMode = false;
+let isFirstRun = false;
 
 function loadProfile() {
   const stored = localStorage.getItem('mm_profile');
@@ -151,13 +157,14 @@ function loadProfile() {
     try { dietProfile = JSON.parse(stored); } catch { dietProfile = null; }
   }
   if (!dietProfile) {
-    dietProfile = {
-      restrictions: DEFAULT_RESTRICTIONS.map(r => ({ ...r })),
-      safeFoods: DEFAULT_SAFE_FOODS.map(r => ({ ...r })),
-    };
-    saveProfile();
+    // New user: start EMPTY and run onboarding — they choose what they CAN
+    // eat rather than inheriting someone else's diet. Not saved yet, so a
+    // reload before finishing re-offers setup.
+    dietProfile = { restrictions: [], safeFoods: [] };
+    isFirstRun = true;
   }
-  // Migration: profiles saved before safe-foods editing existed
+  // Migration: profiles saved before safe-foods editing existed (these are
+  // pre-existing users of the original diet, so seed their original foods).
   if (!Array.isArray(dietProfile.safeFoods)) {
     dietProfile.safeFoods = DEFAULT_SAFE_FOODS.map(r => ({ ...r }));
     saveProfile();
@@ -166,6 +173,33 @@ function loadProfile() {
 
 function saveProfile() {
   localStorage.setItem('mm_profile', JSON.stringify(dietProfile));
+  if (!cloudApplying && window.mmCloudPush) window.mmCloudPush();
+}
+
+// ── Cloud sync bridge (used by auth.js) ──
+// Function declarations so they land on window for the auth module.
+function mmGetCloudSnapshot() {
+  return { profile: dietProfile, savedPlaces };
+}
+
+function mmApplyCloudData(data) {
+  cloudApplying = true;
+  try {
+    if (data?.profile && Array.isArray(data.profile.restrictions)) {
+      dietProfile = data.profile;
+      if (!Array.isArray(dietProfile.safeFoods)) dietProfile.safeFoods = [];
+      saveProfile();
+    }
+    if (Array.isArray(data?.savedPlaces)) {
+      savedPlaces = data.savedPlaces;
+      savePlaces();
+    }
+  } finally {
+    cloudApplying = false;
+  }
+  renderDietCard();
+  updateSidebarNote();
+  renderSaved();
 }
 
 function getActiveRestrictions() {
@@ -279,9 +313,14 @@ function renderDietCard() {
               <div class="diet-card-title">My dietary needs</div>
               <div class="diet-card-sub">Please read before taking my order</div>
             </div>
-            <button class="diet-edit-btn" onclick="toggleEditMode()" style="color:#94a3b8">
-              <i class="ti ti-check" aria-hidden="true"></i> Done
-            </button>
+            <div style="display:flex;gap:6px">
+              <button class="diet-edit-btn" onclick="startOnboarding(true)" style="color:#94a3b8" title="Re-run guided setup with your current picks">
+                <i class="ti ti-refresh" aria-hidden="true"></i> Restart setup
+              </button>
+              <button class="diet-edit-btn" onclick="toggleEditMode()" style="color:#94a3b8">
+                <i class="ti ti-check" aria-hidden="true"></i> Done
+              </button>
+            </div>
           </div>
         </div>
 
@@ -424,6 +463,184 @@ function getSafeDishes(cuisine) {
     }));
   }
   return [{ dish: 'Ask the kitchen', note: askKitchenLine() }];
+}
+
+// ── First-run onboarding ──
+// Can-eat-first setup: new users BUILD their list of foods they like, then
+// (optionally) list hard no's. Chips use event delegation + data attributes
+// so user-typed labels with quotes can't break inline handlers.
+const OB_SAFE_SUGGESTIONS = [
+  { cat: 'Comfort basics', items: ['Plain cheese pizza', 'White pizza', 'Grilled cheese', 'Chicken tenders', 'Plain burger (no toppings)', 'Quesadilla', 'French fries', 'Mac and cheese'] },
+  { cat: 'Proteins', items: ['Grilled chicken (plain)', 'Eggs', 'Plain baked tofu', 'Steak (plain)', 'White fish (plain)', 'Deli turkey'] },
+  { cat: 'Grains & starches', items: ['Plain white rice', 'Plain pasta', 'Buttered noodles', 'Sourdough or white bread', 'Mashed potatoes', 'Pancakes or waffles'] },
+  { cat: 'Cheese & dairy', items: ['Mozzarella', 'Ricotta', 'Cheddar', 'Plain yogurt', 'Milk'] },
+  { cat: 'World favorites', items: ['Plain dosa', 'Pierogi (potato & cheese)', 'Pasta with plain tomato sauce', 'Plain rice bowls', 'Cucumber or avocado sushi rolls', 'Naan or roti'] },
+];
+
+const OB_RESTRICT_SUGGESTIONS = [
+  'Garlic', 'Onions', 'Gluten', 'Dairy', 'Peanuts', 'Tree nuts', 'Shellfish', 'Fish', 'Eggs', 'Soy', 'Sesame or seeds', 'Meat', 'Pork', 'Spicy food', 'Mushrooms', 'Tomatoes', 'Raw vegetables', 'Sauces or gravies', 'Animal rennet in cheese', 'Whole grains or bran',
+];
+
+const obState = { step: 0, safe: new Set(), restrict: new Set() };
+
+const escAttr = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+function startOnboarding(prefill = false) {
+  if (prefill) {
+    // "Restart setup" from the diet card: begin from the current profile.
+    obState.safe = new Set(getActiveSafeFoods().map(f => f.label));
+    obState.restrict = new Set(getActiveRestrictions().map(r => r.label));
+    obState.step = 1;
+  } else {
+    obState.step = 0;
+  }
+  document.getElementById('onboarding').style.display = 'flex';
+  obRender();
+}
+
+function obChipRow(kind, items, selected) {
+  return items.map(label => `
+    <button class="ob-chip ob-chip-${kind}${selected.has(label) ? ' sel' : ''}" data-ob-kind="${kind}" data-ob-toggle="${escAttr(label)}">
+      ${selected.has(label) ? '<i class="ti ti-check" aria-hidden="true"></i> ' : ''}${escAttr(label)}
+    </button>`).join('');
+}
+
+function obRender() {
+  const el = document.getElementById('onboarding');
+  const { step, safe, restrict } = obState;
+  const dots = [0, 1, 2, 3].map(i => `<span class="ob-dot${i === step ? ' on' : ''}"></span>`).join('');
+  let body = '', footer = '';
+
+  if (step === 0) {
+    body = `
+      <div class="ob-hero"><i class="ti ti-tools-kitchen-2" aria-hidden="true"></i></div>
+      <div class="ob-title">Welcome to Menu<em>Match</em></div>
+      <p class="ob-lead">Eating out with food issues is stressful. MenuMatch flips the script: tell us what you <strong>can</strong> eat, and we'll find restaurants — and specific dishes — that fit.</p>
+      <p class="ob-lead-sub">Setup takes about a minute. Everything can be changed later.</p>`;
+    footer = `
+      <button class="ob-skip" data-ob-action="skip">Skip for now</button>
+      <button class="ob-next" data-ob-action="next">Let's set it up <i class="ti ti-arrow-right" aria-hidden="true"></i></button>`;
+  } else if (step === 1) {
+    const suggested = new Set(OB_SAFE_SUGGESTIONS.flatMap(g => g.items));
+    const custom = [...safe].filter(l => !suggested.has(l));
+    body = `
+      <div class="ob-title-sm">What do you like to eat?</div>
+      <p class="ob-lead">Tap everything you're comfortable ordering. This list powers your restaurant matches — the more you add, the better they get.</p>
+      ${OB_SAFE_SUGGESTIONS.map(g => `
+        <div class="ob-cat">${g.cat}</div>
+        <div class="ob-chips">${obChipRow('safe', g.items, safe)}</div>`).join('')}
+      ${custom.length ? `<div class="ob-cat">Your additions</div><div class="ob-chips">${obChipRow('safe', custom, safe)}</div>` : ''}
+      <div class="ob-add-row">
+        <input class="ob-add-input" id="obSafeInput" type="text" placeholder="Add something else you eat..." data-ob-enter="safe">
+        <button class="ob-add-btn" data-ob-action="addSafe"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
+      </div>`;
+    footer = `
+      <button class="ob-back" data-ob-action="back"><i class="ti ti-arrow-left" aria-hidden="true"></i> Back</button>
+      <span class="ob-count">${safe.size} selected</span>
+      <button class="ob-next" data-ob-action="next">Next <i class="ti ti-arrow-right" aria-hidden="true"></i></button>`;
+  } else if (step === 2) {
+    const suggested = new Set(OB_RESTRICT_SUGGESTIONS);
+    const custom = [...restrict].filter(l => !suggested.has(l));
+    body = `
+      <div class="ob-title-sm">Anything that can never be in your food?</div>
+      <p class="ob-lead">Allergies, intolerances, hard no's. This becomes <strong>the one rule</strong> every suggested dish must follow.</p>
+      <div class="ob-chips">${obChipRow('restrict', OB_RESTRICT_SUGGESTIONS, restrict)}</div>
+      ${custom.length ? `<div class="ob-cat">Your additions</div><div class="ob-chips">${obChipRow('restrict', custom, restrict)}</div>` : ''}
+      <div class="ob-add-row">
+        <input class="ob-add-input" id="obRestrictInput" type="text" placeholder="Add another..." data-ob-enter="restrict">
+        <button class="ob-add-btn" data-ob-action="addRestrict"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
+      </div>`;
+    footer = `
+      <button class="ob-back" data-ob-action="back"><i class="ti ti-arrow-left" aria-hidden="true"></i> Back</button>
+      <span class="ob-count">${restrict.size} selected</span>
+      <button class="ob-next" data-ob-action="next">Next <i class="ti ti-arrow-right" aria-hidden="true"></i></button>`;
+  } else {
+    body = `
+      <div class="ob-hero ob-hero-done"><i class="ti ti-checks" aria-hidden="true"></i></div>
+      <div class="ob-title-sm" style="text-align:center">Your diet card is ready</div>
+      <div class="ob-summary">
+        <div class="ob-sum-block">
+          <div class="ob-sum-label safe"><i class="ti ti-circle-check" aria-hidden="true"></i> Can eat (${safe.size})</div>
+          <div class="ob-sum-text">${safe.size ? [...safe].slice(0, 8).map(escAttr).join(' · ') + (safe.size > 8 ? ` · +${safe.size - 8} more` : '') : '<em>None yet — you can add these any time</em>'}</div>
+        </div>
+        <div class="ob-sum-block">
+          <div class="ob-sum-label avoid"><i class="ti ti-circle-x" aria-hidden="true"></i> Never (${restrict.size})</div>
+          <div class="ob-sum-text">${restrict.size ? [...restrict].map(escAttr).join(' · ') : '<em>None listed</em>'}</div>
+        </div>
+      </div>
+      <p class="ob-lead-sub" style="text-align:center">You can edit everything later from the Diet card tab.</p>`;
+    footer = `
+      <button class="ob-back" data-ob-action="back"><i class="ti ti-arrow-left" aria-hidden="true"></i> Back</button>
+      <button class="ob-next" data-ob-action="finish"><i class="ti ti-id-badge" aria-hidden="true"></i> Build my diet card</button>`;
+  }
+
+  el.innerHTML = `
+    <div class="ob-card">
+      <div class="ob-progress">${dots}</div>
+      <div class="ob-body">${body}</div>
+      <div class="ob-footer">${footer}</div>
+    </div>`;
+}
+
+function obAdd(kind) {
+  const inputId = kind === 'safe' ? 'obSafeInput' : 'obRestrictInput';
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const label = input.value.trim();
+  if (!label) return;
+  obState[kind].add(label);
+  obRender();
+  const again = document.getElementById(inputId);
+  if (again) again.focus();
+}
+
+function obFinish() {
+  const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  // Preserve kitchen notes for foods that survive a "Restart setup".
+  const prevNotes = Object.fromEntries((dietProfile.safeFoods || []).map(f => [f.label, f.note]));
+  dietProfile = {
+    safeFoods: [...obState.safe].map(l => ({ id: 'sf_' + slug(l), label: l, note: prevNotes[l] || '', active: true, custom: true })),
+    restrictions: [...obState.restrict].map(l => ({ id: 'r_' + slug(l), label: l, active: true, custom: true })),
+  };
+  isFirstRun = false;
+  saveProfile();
+  renderDietCard();
+  updateSidebarNote();
+  document.getElementById('onboarding').style.display = 'none';
+}
+
+function obSkip() {
+  isFirstRun = false;
+  saveProfile(); // persist the empty profile so onboarding doesn't re-trigger
+  renderDietCard();
+  updateSidebarNote();
+  document.getElementById('onboarding').style.display = 'none';
+}
+
+function obHandleClick(e) {
+  const chip = e.target.closest('[data-ob-toggle]');
+  if (chip) {
+    const set = obState[chip.dataset.obKind];
+    const label = chip.dataset.obToggle;
+    if (set.has(label)) set.delete(label); else set.add(label);
+    obRender();
+    return;
+  }
+  const btn = e.target.closest('[data-ob-action]');
+  if (!btn) return;
+  const action = btn.dataset.obAction;
+  if (action === 'next') { obState.step = Math.min(3, obState.step + 1); obRender(); }
+  else if (action === 'back') { obState.step = Math.max(0, obState.step - 1); obRender(); }
+  else if (action === 'skip') obSkip();
+  else if (action === 'finish') obFinish();
+  else if (action === 'addSafe') obAdd('safe');
+  else if (action === 'addRestrict') obAdd('restrict');
+}
+
+function obHandleKey(e) {
+  if (e.key !== 'Enter') return;
+  const t = e.target.closest ? e.target.closest('[data-ob-enter]') : null;
+  if (t) obAdd(t.dataset.obEnter);
 }
 
 // ── Restaurant search ──
@@ -773,3 +990,10 @@ renderSaved();
 // Restore last searched location
 const lastLoc = localStorage.getItem('mm_last_location');
 if (lastLoc) document.getElementById('locationInput').value = lastLoc;
+// Onboarding: delegated events (labels are user-typed — no inline handlers)
+const obEl = document.getElementById('onboarding');
+if (obEl) {
+  obEl.addEventListener('click', obHandleClick);
+  obEl.addEventListener('keydown', obHandleKey);
+}
+if (isFirstRun) startOnboarding();
