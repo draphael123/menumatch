@@ -474,17 +474,11 @@ function getSafeDishes(cuisine) {
 }
 
 // ── First-run onboarding ──
-// Can-eat-first setup: new users BUILD their list of foods they like, then
-// (optionally) list hard no's. Chips use event delegation + data attributes
-// so user-typed labels with quotes can't break inline handlers.
-const OB_SAFE_SUGGESTIONS = [
-  { cat: 'Comfort basics', items: ['Plain cheese pizza', 'White pizza', 'Grilled cheese', 'Chicken tenders', 'Plain burger (no toppings)', 'Quesadilla', 'French fries', 'Mac and cheese'] },
-  { cat: 'Proteins', items: ['Grilled chicken (plain)', 'Eggs', 'Plain baked tofu', 'Steak (plain)', 'White fish (plain)', 'Deli turkey'] },
-  { cat: 'Grains & starches', items: ['Plain white rice', 'Plain pasta', 'Buttered noodles', 'Sourdough or white bread', 'Mashed potatoes', 'Pancakes or waffles'] },
-  { cat: 'Cheese & dairy', items: ['Mozzarella', 'Ricotta', 'Cheddar', 'Plain yogurt', 'Milk'] },
-  { cat: 'World favorites', items: ['Plain dosa', 'Pierogi (potato & cheese)', 'Pasta with plain tomato sauce', 'Plain rice bowls', 'Cucumber or avocado sushi rolls', 'Naan or roti'] },
-];
-
+// Can-eat-first setup: new users type ANY foods they eat — free entry, no
+// preset list, because everyone's safe foods are personal. Hard no's get
+// common-allergen chips (that set IS standard) plus free entry. Chips use
+// event delegation + data attributes so user-typed labels with quotes
+// can't break inline handlers.
 const OB_RESTRICT_SUGGESTIONS = [
   'Garlic', 'Onions', 'Gluten', 'Dairy', 'Peanuts', 'Tree nuts', 'Shellfish', 'Fish', 'Eggs', 'Soy', 'Sesame or seeds', 'Meat', 'Pork', 'Spicy food', 'Mushrooms', 'Tomatoes', 'Raw vegetables', 'Sauces or gravies', 'Animal rennet in cheese', 'Whole grains or bran',
 ];
@@ -507,10 +501,13 @@ function startOnboarding(prefill = false) {
 }
 
 function obChipRow(kind, items, selected) {
-  return items.map(label => `
-    <button class="ob-chip ob-chip-${kind}${selected.has(label) ? ' sel' : ''}" data-ob-kind="${kind}" data-ob-toggle="${escAttr(label)}">
-      ${selected.has(label) ? '<i class="ti ti-check" aria-hidden="true"></i> ' : ''}${escAttr(label)}
-    </button>`).join('');
+  return items.map(label => {
+    const sel = selected.has(label);
+    return `
+    <button class="ob-chip ob-chip-${kind}${sel ? ' sel' : ''}" data-ob-kind="${kind}" data-ob-toggle="${escAttr(label)}" title="${sel ? 'Tap to remove' : 'Tap to add'}">
+      ${sel && kind === 'restrict' ? '<i class="ti ti-check" aria-hidden="true"></i> ' : ''}${escAttr(label)}${sel && kind === 'safe' ? ' <span class="ob-chip-x" aria-hidden="true">×</span>' : ''}
+    </button>`;
+  }).join('');
 }
 
 function obRender() {
@@ -536,22 +533,22 @@ function obRender() {
       <button class="ob-skip" data-ob-action="skip">Skip for now</button>
       <button class="ob-next" data-ob-action="next">Let's set it up <i class="ti ti-arrow-right" aria-hidden="true"></i></button>`;
   } else if (step === 1) {
-    const suggested = new Set(OB_SAFE_SUGGESTIONS.flatMap(g => g.items));
-    const custom = [...safe].filter(l => !suggested.has(l));
+    // Free entry — YOUR foods, not a preset list. Enter or commas add fast.
+    const mine = [...safe];
     body = `
-      <div class="ob-title-sm">What do you like to eat?</div>
-      <p class="ob-lead">Tap everything you're comfortable ordering. This list powers your restaurant matches — the more you add, the better they get.</p>
-      ${OB_SAFE_SUGGESTIONS.map(g => `
-        <div class="ob-cat">${g.cat}</div>
-        <div class="ob-chips">${obChipRow('safe', g.items, safe)}</div>`).join('')}
-      ${custom.length ? `<div class="ob-cat">Your additions</div><div class="ob-chips">${obChipRow('safe', custom, safe)}</div>` : ''}
-      <div class="ob-add-row">
-        <input class="ob-add-input" id="obSafeInput" type="text" placeholder="Add something else you eat..." data-ob-enter="safe">
+      <div class="ob-title-sm">What do you eat?</div>
+      <p class="ob-lead">Type anything you're comfortable ordering — favorite dishes, safe staples, exact preparations. This list powers your restaurant matches, and there are no wrong answers.</p>
+      <div class="ob-add-row ob-main-add">
+        <input class="ob-add-input" id="obSafeInput" type="text" placeholder='Try "chicken tenders, white rice, cheese quesadilla"...' data-ob-enter="safe">
         <button class="ob-add-btn" data-ob-action="addSafe"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
-      </div>`;
+      </div>
+      <div class="ob-hint">Press Enter to add — commas add several at once. Tap a food to remove it.</div>
+      ${mine.length
+        ? `<div class="ob-cat">Your foods (${mine.length})</div><div class="ob-chips">${obChipRow('safe', mine, safe)}</div>`
+        : `<div class="ob-empty-list"><i class="ti ti-salad" aria-hidden="true"></i> Nothing yet — add your first food above.</div>`}`;
     footer = `
       <button class="ob-back" data-ob-action="back"><i class="ti ti-arrow-left" aria-hidden="true"></i> Back</button>
-      <span class="ob-count">${safe.size} selected</span>
+      <span class="ob-count">${safe.size} added</span>
       <button class="ob-next" data-ob-action="next">Next <i class="ti ti-arrow-right" aria-hidden="true"></i></button>`;
   } else if (step === 2) {
     const suggested = new Set(OB_RESTRICT_SUGGESTIONS);
@@ -595,15 +592,22 @@ function obRender() {
       <div class="ob-body">${body}</div>
       <div class="ob-footer">${footer}</div>
     </div>`;
+
+  // Typing is the primary interaction on the can-eat step — keep focus there.
+  if (step === 1) {
+    const input = document.getElementById('obSafeInput');
+    if (input) input.focus();
+  }
 }
 
 function obAdd(kind) {
   const inputId = kind === 'safe' ? 'obSafeInput' : 'obRestrictInput';
   const input = document.getElementById(inputId);
   if (!input) return;
-  const label = input.value.trim();
-  if (!label) return;
-  obState[kind].add(label);
+  // Commas add several foods at once ("pizza, fries, plain rice").
+  const labels = input.value.split(',').map(s => s.trim()).filter(Boolean);
+  if (!labels.length) return;
+  labels.forEach(l => obState[kind].add(l));
   obRender();
   const again = document.getElementById(inputId);
   if (again) again.focus();
