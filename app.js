@@ -9,12 +9,17 @@ function showTab(name) {
 // ── Saved places ──
 let savedPlaces = JSON.parse(localStorage.getItem('mm_saved') || '[]');
 
+// True while cloud data is being applied locally — suppresses the push hook
+// so a pull doesn't immediately echo back as a push.
+let cloudApplying = false;
+
 function savePlaces() {
   localStorage.setItem('mm_saved', JSON.stringify(savedPlaces));
   const count = savedPlaces.length;
   const badge = document.getElementById('savedCount');
   badge.textContent = count;
   badge.classList.toggle('visible', count > 0);
+  if (!cloudApplying && window.mmCloudPush) window.mmCloudPush();
 }
 
 function saveRestaurant(r) {
@@ -168,6 +173,33 @@ function loadProfile() {
 
 function saveProfile() {
   localStorage.setItem('mm_profile', JSON.stringify(dietProfile));
+  if (!cloudApplying && window.mmCloudPush) window.mmCloudPush();
+}
+
+// ── Cloud sync bridge (used by auth.js) ──
+// Function declarations so they land on window for the auth module.
+function mmGetCloudSnapshot() {
+  return { profile: dietProfile, savedPlaces };
+}
+
+function mmApplyCloudData(data) {
+  cloudApplying = true;
+  try {
+    if (data?.profile && Array.isArray(data.profile.restrictions)) {
+      dietProfile = data.profile;
+      if (!Array.isArray(dietProfile.safeFoods)) dietProfile.safeFoods = [];
+      saveProfile();
+    }
+    if (Array.isArray(data?.savedPlaces)) {
+      savedPlaces = data.savedPlaces;
+      savePlaces();
+    }
+  } finally {
+    cloudApplying = false;
+  }
+  renderDietCard();
+  updateSidebarNote();
+  renderSaved();
 }
 
 function getActiveRestrictions() {

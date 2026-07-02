@@ -55,6 +55,38 @@ html, body { height: 100%; font-family: 'DM Sans', system-ui, sans-serif; backgr
 }
 .sidebar-note i { margin-top: 1px; flex-shrink: 0; color: var(--teal); }
 
+/* ── Account (Google sign-in / sync) ── */
+.sidebar-account { display: flex; flex-direction: column; gap: 6px; }
+.google-signin-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 9px 12px;
+  background: #fff; color: #1f2937;
+  border: none; border-radius: var(--radius);
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.google-signin-btn:hover { background: #f1f5f9; transform: translateY(-1px); }
+.google-signin-btn .ti { color: #4285F4; font-size: 16px; }
+.account-hint { font-size: 10px; color: var(--sidebar-muted); text-align: center; line-height: 1.4; }
+.account-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border-radius: var(--radius);
+  background: rgba(255,255,255,0.05); border: 0.5px solid var(--sidebar-border);
+}
+.account-avatar { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; object-fit: cover; }
+.account-avatar-fallback { background: var(--sidebar-accent); display: flex; align-items: center; justify-content: center; color: var(--sidebar-muted); font-size: 15px; }
+.account-info { flex: 1; min-width: 0; }
+.account-name { font-size: 12px; font-weight: 600; color: var(--sidebar-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.account-sync { font-size: 10px; color: #7dd3fc; display: flex; align-items: center; gap: 4px; margin-top: 1px; }
+.account-sync .ti { font-size: 11px; }
+.account-signout {
+  background: none; border: none; color: var(--sidebar-muted);
+  cursor: pointer; font-size: 15px; padding: 4px; border-radius: 6px;
+  flex-shrink: 0; transition: all 0.15s; display: flex; align-items: center;
+}
+.account-signout:hover { color: #fca5a5; background: rgba(220,38,38,0.15); }
+
 /* ── Nav ── */
 .sidebar-nav { display: flex; flex-direction: column; gap: 3px; }
 .nav-btn {
