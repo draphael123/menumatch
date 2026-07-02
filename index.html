@@ -177,6 +177,9 @@
     </main>
   </div>
 
+  <!-- First-run onboarding overlay (rendered by app.js) -->
+  <div class="ob-backdrop" id="onboarding" style="display:none"></div>
+
   <!-- Call-ahead script modal -->
   <div class="modal-backdrop" id="scriptModal" onclick="closeModal()" style="display:none">
     <div class="modal-box" onclick="event.stopPropagation()">
@@ -191,7 +194,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
   <script type="module" src="auth.js?v=1"></script>
 </body>
 </html>
