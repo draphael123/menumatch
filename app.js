@@ -174,6 +174,77 @@ function loadProfile() {
 function saveProfile() {
   localStorage.setItem('mm_profile', JSON.stringify(dietProfile));
   if (!cloudApplying && window.mmCloudPush) window.mmCloudPush();
+  scheduleCuisineRefresh();
+}
+
+// ── Personalized cuisines ──
+// Derived from the user's typed can-eat list (Claude via /api/cuisines,
+// keyword fallback offline). Drives the search filter buttons, the "Safe
+// cuisine" badge, and the diet card's "best cuisine types" section.
+let cuisineTimer = null;
+
+function scheduleCuisineRefresh() {
+  clearTimeout(cuisineTimer);
+  cuisineTimer = setTimeout(refreshCuisines, 1500);
+}
+
+async function refreshCuisines() {
+  if (isFirstRun) return; // don't persist anything before onboarding finishes
+  const foods = getActiveSafeFoods().map(f => f.label);
+  const from = foods.join('|');
+  if (from === (dietProfile.cuisinesFrom || '')) return; // up to date
+  if (!foods.length) {
+    dietProfile.cuisines = [];
+    dietProfile.cuisinesFrom = '';
+    saveProfile();
+    renderCuisineFilters();
+    if (!cardEditMode) renderDietCard();
+    return;
+  }
+  let list = null;
+  try {
+    const res = await fetch('/api/cuisines', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ foods, restrictions: getActiveRestrictions().map(r => r.label) }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.cuisines) && data.cuisines.length) list = data.cuisines;
+    }
+  } catch { /* offline / local dev — fall through */ }
+  if (!list) list = localCuisineGuess(foods);
+  dietProfile.cuisines = list.slice(0, 6);
+  dietProfile.cuisinesFrom = from;
+  saveProfile();
+  renderCuisineFilters();
+  if (!cardEditMode) renderDietCard();
+}
+
+// Keyword fallback when the AI endpoint is unreachable.
+const CUISINE_KEYWORDS = [
+  [/pizza|pasta|mozzarella|ricotta|risotto|lasagn|passata/i, ['Italian', 'Pizza']],
+  [/dosa|idli|dal\b|paneer|naan|roti|biryani|curry/i, ['South Indian', 'Indian']],
+  [/sushi|ramen|miso|teriyaki|tempura|edamame/i, ['Japanese', 'Sushi']],
+  [/pierogi|schnitzel|goulash|borscht|kielbasa/i, ['Eastern European']],
+  [/taco|burrito|quesadilla|enchilada|fajita/i, ['Mexican']],
+  [/pho\b|banh/i, ['Vietnamese']],
+  [/pad thai|thai/i, ['Thai']],
+  [/hummus|falafel|pita|gyro|halloumi|shawarma/i, ['Mediterranean', 'Middle Eastern']],
+  [/dumpling|lo mein|fried rice|wonton|chow/i, ['Chinese']],
+  [/burger|tenders|fries|grilled cheese|mac and cheese|mac n|steak|eggs|pancake|waffle|sandwich|toast|bacon|nuggets/i, ['American', 'Diner']],
+  [/tofu/i, ['Japanese', 'Vegetarian']],
+  [/rice/i, ['Chinese', 'Japanese']],
+];
+
+function localCuisineGuess(foods) {
+  const text = foods.join(' \n ');
+  const out = [];
+  for (const [re, cuisines] of CUISINE_KEYWORDS) {
+    if (re.test(text)) for (const c of cuisines) if (!out.includes(c)) out.push(c);
+    if (out.length >= 6) break;
+  }
+  return out.length ? out.slice(0, 6) : ['American', 'Diner'];
 }
 
 // ── Cloud sync bridge (used by auth.js) ──
@@ -430,6 +501,16 @@ function renderDietCard() {
             "${askLine}"
           </div>
         </div>
+
+        ${(dietProfile.cuisines || []).length ? `
+        <div class="diet-section">
+          <div class="diet-section-label info">
+            <i class="ti ti-info-circle" aria-hidden="true"></i> Best cuisine types for me
+          </div>
+          <div class="cuisine-tags">
+            ${dietProfile.cuisines.map(c => `<span class="cuisine-tag">${escAttr(c)}</span>`).join('')}
+          </div>
+        </div>` : ''}
       </div>`;
   }
 }
@@ -664,10 +745,57 @@ function obHandleKey(e) {
 }
 
 // ── Restaurant search ──
-const SAFE_CUISINES = ['south indian', 'indian', 'italian', 'eastern european', 'polish', 'ukrainian', 'japanese', 'vegetarian', 'vegan'];
 let allResults = [];
 let activeFilter = 'all';
 let currentCoords = null;
+
+// Cuisine labels that should count as a match for each filter/profile
+// cuisine (restaurant labels come from cuisineLabel() in api/search.js).
+const CUISINE_MATCH_ALIASES = {
+  'italian': ['italian', 'pizza'],
+  'pizza': ['pizza', 'italian'],
+  'japanese': ['japanese', 'sushi', 'ramen'],
+  'sushi': ['sushi', 'japanese'],
+  'ramen': ['ramen', 'japanese'],
+  'indian': ['indian', 'south indian'],
+  'south indian': ['south indian', 'indian'],
+  'american': ['american', 'diner', 'burgers', 'breakfast'],
+  'diner': ['diner', 'american', 'breakfast'],
+  'burgers': ['burgers', 'american'],
+  'eastern european': ['eastern european', 'polish', 'ukrainian'],
+  'mediterranean': ['mediterranean', 'greek', 'middle eastern'],
+  'greek': ['greek', 'mediterranean'],
+  'middle eastern': ['middle eastern', 'mediterranean'],
+  'breakfast & brunch': ['breakfast', 'brunch', 'diner', 'café'],
+  'deli / sandwiches': ['deli', 'sandwich'],
+};
+
+function cuisineMatches(filterLabel, restaurantCuisine) {
+  const f = (filterLabel || '').toLowerCase();
+  const c = (restaurantCuisine || '').toLowerCase();
+  const keys = CUISINE_MATCH_ALIASES[f] || [f];
+  return keys.some(k => c.includes(k));
+}
+
+// A restaurant is a "good fit" when its cuisine matches one of the
+// profile-derived cuisines — personal, not hardcoded.
+function isSafeCuisine(cuisine) {
+  return ((dietProfile && dietProfile.cuisines) || []).some(pc => cuisineMatches(pc, cuisine));
+}
+
+function renderCuisineFilters() {
+  const row = document.getElementById('cuisineFilterRow');
+  if (!row) return;
+  const cuisines = (dietProfile && dietProfile.cuisines) || [];
+  // If the active filter no longer exists (profile changed), fall back.
+  if (activeFilter !== 'all' && !cuisines.some(c => c.toLowerCase() === activeFilter)) {
+    activeFilter = 'all';
+  }
+  row.innerHTML = `<span class="filter-label">Filter:</span>
+    <button class="filter-btn${activeFilter === 'all' ? ' active' : ''}" data-cuisine="all">All</button>
+    ${cuisines.map(c => `<button class="filter-btn${activeFilter === c.toLowerCase() ? ' active' : ''}" data-cuisine="${escAttr(c.toLowerCase())}">${escAttr(c)}</button>`).join('')}
+    ${cuisines.length ? '<span class="filter-hint">— your best-fit cuisines</span>' : '<span class="filter-hint">— add foods to your diet card to get cuisine suggestions</span>'}`;
+}
 
 function cuisineIcon(type) {
   const t = (type || '').toLowerCase();
@@ -680,11 +808,6 @@ function cuisineIcon(type) {
   if (t.includes('mediterranean')) return '🫒';
   if (t.includes('cafe') || t.includes('coffee')) return '☕';
   return '🍽️';
-}
-
-function isSafeCuisine(cuisine) {
-  const c = (cuisine || '').toLowerCase();
-  return SAFE_CUISINES.some(s => c.includes(s));
 }
 
 function distanceMiles(userCoords, loc) {
@@ -762,18 +885,10 @@ function renderResults(restaurants) {
     return;
   }
 
-  // Broader filter aliases — Google often labels restaurants more generically
-  const FILTER_ALIASES = {
-    'south indian': c => c.includes('south indian') || c.includes('indian'),
-    'italian':      c => c.includes('italian') || c.includes('pizza'),
-    'eastern european': c => c.includes('eastern european') || c.includes('polish') || c.includes('ukrainian'),
-    'japanese':     c => c.includes('japanese') || c.includes('sushi') || c.includes('ramen'),
-  };
-
   let filtered = restaurants;
   if (activeFilter !== 'all') {
-    const matchFn = FILTER_ALIASES[activeFilter] || (c => c.includes(activeFilter));
-    filtered = restaurants.filter(r => matchFn((r.cuisine || '').toLowerCase()));
+    // Alias-aware matching against the profile-derived filter labels.
+    filtered = restaurants.filter(r => cuisineMatches(activeFilter, r.cuisine));
   }
 
   // Sort by distance (closest first); fall back to rating if no coords
@@ -844,7 +959,7 @@ function renderResults(restaurants) {
               ${dist ? `<span>·</span><span>${dist}</span>` : ''}
             </div>
           </div>
-          ${safe ? `<span class="safe-badge">Safe cuisine</span>` : ''}
+          ${safe ? `<span class="safe-badge">Good fit for you</span>` : ''}
         </div>
 
         <div class="r-details">
@@ -1007,6 +1122,15 @@ renderDietCard();
 updateSidebarNote();
 savePlaces();
 renderSaved();
+renderCuisineFilters();
+// Filter buttons are re-rendered from the profile — delegate clicks.
+const filterRow = document.getElementById('cuisineFilterRow');
+if (filterRow) {
+  filterRow.addEventListener('click', e => {
+    const btn = e.target.closest('.filter-btn');
+    if (btn) setFilter(btn, btn.dataset.cuisine);
+  });
+}
 // Restore last searched location
 const lastLoc = localStorage.getItem('mm_last_location');
 if (lastLoc) document.getElementById('locationInput').value = lastLoc;
@@ -1017,3 +1141,5 @@ if (obEl) {
   obEl.addEventListener('keydown', obHandleKey);
 }
 if (isFirstRun) startOnboarding();
+// Existing users may predate derived cuisines — compute on load if stale.
+scheduleCuisineRefresh();

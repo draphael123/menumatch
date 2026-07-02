@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
-  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
   <div class="app">
@@ -73,14 +73,8 @@
             </select>
             <button class="search-btn" onclick="runSearch()">Search</button>
           </div>
-          <div class="cuisine-filter-row">
-            <span class="filter-label">Filter:</span>
-            <button class="filter-btn active" data-cuisine="all" onclick="setFilter(this, 'all')">All</button>
-            <button class="filter-btn" data-cuisine="south indian" onclick="setFilter(this, 'south indian')">South Indian</button>
-            <button class="filter-btn" data-cuisine="italian" onclick="setFilter(this, 'italian')">Italian</button>
-            <button class="filter-btn" data-cuisine="eastern european" onclick="setFilter(this, 'eastern european')">Eastern European</button>
-            <button class="filter-btn" data-cuisine="japanese" onclick="setFilter(this, 'japanese')">Japanese</button>
-          </div>
+          <!-- Rendered from the profile's derived cuisines (app.js) -->
+          <div class="cuisine-filter-row" id="cuisineFilterRow"></div>
         </div>
         <div class="results-area" id="resultsArea">
           <div class="empty-state">
@@ -134,7 +128,7 @@
               <p>Go to the <strong>Find restaurants</strong> tab. You have two ways to search:</p>
               <p style="margin-top:8px"><strong>By location:</strong> Type a city name, address, or zip code into the search box and hit <strong>Search</strong>. Results will show restaurants within the selected radius.</p>
               <p style="margin-top:6px"><strong>Near me:</strong> Click the <strong>Near me</strong> button to automatically use your current GPS location — your browser will ask for permission the first time.</p>
-              <p style="margin-top:6px">Use the <strong>radius dropdown</strong> (5 / 10 / 25 mi) to widen or narrow how far the search reaches. Use the <strong>cuisine filter</strong> buttons to narrow results to South Indian, Italian, Eastern European, or Japanese — the cuisines most compatible with your diet.</p>
+              <p style="margin-top:6px">Use the <strong>radius dropdown</strong> (5 / 10 / 25 mi) to widen or narrow how far the search reaches. The <strong>cuisine filter</strong> buttons are personal: they're the cuisine types derived from the foods on <em>your</em> diet card, so you can jump straight to the kinds of restaurants most likely to feed you well.</p>
             </div>
           </div>
 
@@ -194,7 +188,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=13"></script>
   <script type="module" src="auth.js?v=3"></script>
 </body>
 </html>
