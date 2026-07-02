@@ -160,6 +160,8 @@ html, body { height: 100%; font-family: 'DM Sans', system-ui, sans-serif; backgr
 .filter-btn:hover { background: var(--coral-bg); border-color: var(--coral); color: var(--coral-dark); }
 .filter-btn.active { background: var(--coral); border-color: var(--coral); color: #fff; font-weight: 600; }
 
+.filter-hint { font-size: 10.5px; color: #C2C7D0; font-style: italic; }
+
 /* ── Results ── */
 .results-area { flex: 1; padding: 1rem 1.5rem 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
 .results-header { font-size: 12px; color: #9CA3AF; padding: 4px 0 2px; }
